@@ -11,6 +11,16 @@ def load_parameter(prefix, parameter):
     return GLOBAL_STORAGE.get(parameter.storage_path(prefix))
 
 
+def save_request_result(route, value):
+    global GLOBAL_STORAGE
+    GLOBAL_STORAGE['%s.result' % route.storage_prefix] = value
+
+
+def load_request_result(route):
+    global GLOBAL_STORAGE
+    return GLOBAL_STORAGE.get('%s.result' % route.storage_prefix)
+
+
 def get_parameter_values(prefix, parameters):
     values = {}
     for param in parameters:

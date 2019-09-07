@@ -13,7 +13,7 @@ from PySide2.QtCore import Signal, QThread, QThreadPool, QRunnable, Slot, QObjec
 from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor
 from .models import Route, Choice
 from .loader import load_file
-from .storage import save_parameter, load_parameter, get_parameter_values_for_route
+from .storage import save_parameter, load_parameter, get_parameter_values_for_route, load_request_result, save_request_result
 
 
 class RouteList(QWidget):
@@ -226,9 +226,11 @@ class TextHighlighter(QSyntaxHighlighter):
         number_format = QTextCharFormat()
         number_format.setForeground(QColor('#AE81FF'))
 
+        if len(text) == 0 or text[0] not in '{}[] ':
+            return
+
         current = 0
         for tokentype, value in JsonLexer().get_tokens(text):
-            print(tokentype, value)
             if tokentype in Name or tokentype in String:
                 self.setFormat(current, len(value), string_format)
             elif tokentype in Number or tokentype in Keyword:
@@ -260,14 +262,16 @@ class ResultWidget(QWidget):
 
         self.highlighter = TextHighlighter(self.result_text_edit.document())
 
-        # self.result_text_edit = QTextBrowser()
-
         layout.addWidget(self.result_text_edit)
+
+        if route is not None:
+            saved_result = load_request_result(route)
+            self.result_text_edit.setPlainText(saved_result)
 
         self.setLayout(layout)
 
     def make_request(self):
-        self.set_text('Loading..')
+        self.result_text_edit.setPlainText('Loading..')
         group_values, route_values = get_parameter_values_for_route(self.route)
         request = self.route.get_request(group_values, route_values)
         worker = RequestWorker(
@@ -276,15 +280,12 @@ class ResultWidget(QWidget):
             headers=request.headers,
             json=request.json,
         )
-        worker.signals.result.connect(self.set_text)
+        worker.signals.result.connect(self.set_result)
         self.thread_pool.start(worker)
 
-    def set_text(self, text):
+    def set_result(self, text):
         self.result_text_edit.setPlainText(text)
-
-        # html = highlight(text, JsonLexer(), HtmlFormatter(full=True))
-        # print(html)
-        # self.result_text_edit.setHtml(html)
+        save_request_result(self.route, text)
 
 
 class MainWidget(QWidget):

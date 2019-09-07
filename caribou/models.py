@@ -1,4 +1,4 @@
-from typing import NamedTuple, Callable, Union, List
+from typing import NamedTuple, Callable, List
 
 
 class Choice(NamedTuple):
@@ -20,7 +20,7 @@ class Parameter(NamedTuple):
     cls: str = None
 
     def storage_path(self, prefix):
-        return '%s.%s' % (prefix, self.name)
+        return '%s.param.%s' % (prefix, self.name)
 
 
 class Route:
