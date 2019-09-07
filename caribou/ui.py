@@ -7,9 +7,9 @@ from pygments.token import Name, String, Number, Keyword
 from pygments.lexers import JsonLexer
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
                                QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
-                               QTextEdit, QFrame, QComboBox)
+                               QTextEdit, QFrame, QComboBox, QScrollArea, QShortcut)
 from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject
-from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor
+from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor, QKeySequence
 from .models import Route, Choice
 from .loader import load_file
 from .storage import save_parameter, load_parameter, get_parameter_values_for_route, load_request_result, save_request_result, MissingParameter, persist_storage, load_storage
@@ -34,14 +34,50 @@ class RouteList(QWidget):
     def __init__(self, routes):
         super().__init__()
 
+        self.buttons = []
+
         layout = QVBoxLayout()
         for route in routes:
             button = self._create_route_widget(route)
+            self.buttons.append(button)
             layout.addWidget(button)
 
         layout.addStretch(1)
 
         self.setLayout(layout)
+
+
+class SearchRouteList(QWidget):
+    def __init__(self, routes):
+        super().__init__()
+
+        self.route_list = RouteList(routes)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidget(self.route_list)
+        self.scroll_area.setWidgetResizable(True)
+
+        self.search_line = QLineEdit()
+        self.search_line.setPlaceholderText('Search')
+        self.search_line.textChanged.connect(self.search)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.search_line)
+        layout.addWidget(self.scroll_area)
+
+        self.shortcut = QShortcut(QKeySequence("Ctrl+f"), self, self.focus)
+
+        self.setLayout(layout)
+
+    def search(self):
+        text = self.search_line.text()
+
+        for button in self.route_list.buttons:
+            visible = text in button.text()
+            button.setVisible(visible)
+
+    def focus(self):
+        self.search_line.setFocus()
+        self.search_line.selectAll()
 
 
 TEMPLATE = '''{method} {url}
@@ -56,6 +92,7 @@ class TextParameterWidget(QLineEdit):
 
     def __init__(self, parameter, current_value):
         super().__init__()
+        self.setFont(QFont('Fira Mono'))
         self.setPlaceholderText(parameter.default)
         self.default_value = None
         if current_value is not None:
@@ -313,15 +350,15 @@ class MainWidget(QWidget):
 
         self.layout = QHBoxLayout()
 
-        self.route_list_widget = RouteList(routes)
+        self.route_list_widget = SearchRouteList(routes)
         self.parameter_widget = ParameterWidget()
         self.result_widget = ResultWidget()
 
-        self.route_list_widget.new_route_signal.connect(self.set_route)
+        self.route_list_widget.route_list.new_route_signal.connect(self.set_route)
 
         self.layout.addWidget(self.route_list_widget)
-        self.layout.addWidget(self.parameter_widget)
-        self.layout.addWidget(self.result_widget)
+        self.layout.addWidget(self.parameter_widget, stretch=1)
+        self.layout.addWidget(self.result_widget, stretch=1)
 
         self.setLayout(self.layout)
 
@@ -334,8 +371,8 @@ class MainWidget(QWidget):
 
         self.parameter_widget = ParameterWidget(route)
         self.result_widget = ResultWidget(route)
-        self.layout.addWidget(self.parameter_widget)
-        self.layout.addWidget(self.result_widget)
+        self.layout.addWidget(self.parameter_widget, stretch=1)
+        self.layout.addWidget(self.result_widget, stretch=1)
 
 
 class MainWindow(QMainWindow):
@@ -346,7 +383,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.widget)
         self.setWindowTitle('Caribou')
         self.setWindowIcon(QIcon(os.path.join(CURRENT_DIR, 'icon.png')))
-        self.resize(1100, 600)
+        self.resize(1200, 600)
 
 
 def run(path):
