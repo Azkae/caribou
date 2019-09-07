@@ -59,6 +59,9 @@ class TextParameterWidget(QLineEdit):
     def on_update(self):
         self.updated_signal.emit(self.text())
 
+    def set_value(self, value):
+        self.setText(value)
+
 
 class ChoiceParameterWidget(QComboBox):
     updated_signal = Signal(str)
@@ -76,6 +79,9 @@ class ChoiceParameterWidget(QComboBox):
 
     def on_update(self, value):
         self.updated_signal.emit(value)
+
+    def set_value(self, value):
+        self.setCurrentText(value)
 
 
 class ParameterWidget(QWidget):
@@ -168,6 +174,8 @@ class ParameterWidget(QWidget):
             widget = TextParameterWidget(parameter, saved_value)
         elif isinstance(parameter.cls, Choice):
             widget = ChoiceParameterWidget(parameter, saved_value)
+        else:
+            raise Exception('Widget not supported')
 
         if widget.default_value is not None:
             save_parameter(prefix, parameter, widget.default_value)
@@ -175,6 +183,15 @@ class ParameterWidget(QWidget):
         widget.updated_signal.connect(on_updated_param)
 
         layout.addWidget(widget)
+
+        if parameter.generator is not None:
+            def generate_new_value():
+                new_value = parameter.generator()
+                widget.set_value(new_value)
+
+            generator_button = QPushButton('new')
+            generator_button.clicked.connect(generate_new_value)
+            layout.addWidget(generator_button)
         return layout
 
 
