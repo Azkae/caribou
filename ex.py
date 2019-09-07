@@ -15,14 +15,14 @@ def _generate_uuid():
 @caribou.group('api settings')
 @caribou.param('target', cls=caribou.Choice(list(BASE_URLS.keys())))
 @caribou.param('user_id', default='default-user', generator=_generate_uuid)
-def group(ctx, target, user_id):
+def api(ctx, target, user_id):
     ctx['base_url'] = BASE_URLS[target]
     ctx['headers'] = {
         'X-UserID': user_id,
     }
 
 
-@group.route()
+@api.route()
 @caribou.param('pet_id')
 def get_pet(ctx, pet_id):
     return caribou.request.get(
@@ -31,7 +31,7 @@ def get_pet(ctx, pet_id):
     )
 
 
-@group.route()
+@api.route()
 @caribou.param('pet_id', default='1')
 def post_pet(ctx, pet_id):
     return caribou.request.post(
