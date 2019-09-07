@@ -1,23 +1,10 @@
-import os
 import sys
-from typing import NamedTuple, List
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
-                               QVBoxLayout, QHBoxLayout, QDialog, QMainWindow, QWidget, QTextEdit)
+                               QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QTextEdit)
 from PySide2.QtCore import Signal
 from PySide2.QtGui import QIcon
-
-
-class Parameter(NamedTuple):
-    name: str
-    default_value: str = ''
-
-
-class Route(NamedTuple):
-    method: str
-    name: str
-    parameters: List[Parameter]
-    headers: dict
-    body: str = ''
+from .models import Route
+from .loader import load_file
 
 
 class RouteList(QWidget):
@@ -25,9 +12,9 @@ class RouteList(QWidget):
 
     def _create_route_widget(self, route):
         def cb():
-             self.new_route_signal.emit(route)
+            self.new_route_signal.emit(route)
 
-        button = QPushButton(route.method + ' ' + route.name)
+        button = QPushButton(route.display_name)
 
         button.clicked.connect(cb)
         return button
@@ -79,13 +66,23 @@ class ParameterWidget(QWidget):
         if self.route is None:
             return
 
-        headers = ['%s: %s' % (name, value) for name, value in self.route.headers.items()]
+        group_values = {
+            'target': 'prod',
+            'user_id': 'AZE'
+        }
+
+        route_values = {
+            'source_id': 'test'
+        }
+
+        request = self.route.get_request(group_values, route_values)
+        headers = ['%s: %s' % (name, value) for name, value in request.headers.items()]
 
         text = TEMPLATE.format(
-            method=self.route.method,
-            url=self.route.name,
+            method=request.method,
+            url=request.url,
             headers='\n'.join(headers),
-            body=self.route.body
+            body=request.body,
         )
 
         self.preview_text_edit.setPlainText(text)
@@ -96,7 +93,7 @@ class ParameterWidget(QWidget):
         layout.addWidget(QLabel(parameter.name))
 
         line_edit = QLineEdit()
-        line_edit.setPlaceholderText(parameter.default_value)
+        line_edit.setPlaceholderText(parameter.default)
         line_edit.textChanged.connect(self._update_preview)
 
         layout.addWidget(line_edit)
@@ -127,17 +124,18 @@ class MainWidget(QWidget):
         self.layout.addWidget(self.parameter_widget)
 
 
-class Form(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        routes = [
-            Route('GET', 'users', [], {}),
-            Route('POST', 'user', [Parameter(name='test', default_value='default value')], {'Authorization': 'Basic test'}),
-            Route('GET', 'movie by id', [Parameter(name='test2')], {}),
-            Route('GET', 'movies', [Parameter(name='test3')], {}),
-            Route('POST', 'movie', [Parameter(name='test4')], {}),
-        ]
+        routes = load_file('ex.py')
+        # routes = [
+        #     Route('GET', 'users', [], {}),
+        #     Route('POST', 'user', [Parameter(name='user_id', default_value='default value')], {'Authorization': 'Basic test'}, '{"user_id": "{{ user_id }}"}'),
+        #     Route('GET', 'movie by id', [Parameter(name='test2')], {}),
+        #     Route('GET', 'movies', [Parameter(name='test3')], {}),
+        #     Route('POST', 'movie', [Parameter(name='test4')], {}),
+        # ]
 
         self.widget = MainWidget(routes)
         self.setCentralWidget(self.widget)
@@ -145,11 +143,15 @@ class Form(QMainWindow):
         self.setWindowIcon(QIcon('icon.png'))
 
 
-if __name__ == '__main__':
+def run():
     # Create the Qt Application
     app = QApplication(sys.argv)
     # Create and show the form
-    form = Form()
+    form = MainWindow()
     form.show()
     # Run the main Qt loop
     sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    run()
