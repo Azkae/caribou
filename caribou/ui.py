@@ -202,17 +202,8 @@ class MainWidget(QWidget):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, routes):
         super().__init__()
-
-        routes = load_file('ex.py')
-        # routes = [
-        #     Route('GET', 'users', [], {}),
-        #     Route('POST', 'user', [Parameter(name='user_id', default_value='default value')], {'Authorization': 'Basic test'}, '{"user_id": "{{ user_id }}"}'),
-        #     Route('GET', 'movie by id', [Parameter(name='test2')], {}),
-        #     Route('GET', 'movies', [Parameter(name='test3')], {}),
-        #     Route('POST', 'movie', [Parameter(name='test4')], {}),
-        # ]
 
         self.widget = MainWidget(routes)
         self.setCentralWidget(self.widget)
@@ -221,14 +212,12 @@ class MainWindow(QMainWindow):
         self.resize(900, 600)
 
 
-def run():
-    # Create the Qt Application
+def run(path):
+    routes = load_file(path)
+
     app = QApplication(sys.argv)
-    # QApplication.setFont(QFont('Roboto'))
-    # Create and show the form
-    form = MainWindow()
+    form = MainWindow(routes)
     form.show()
-    # Run the main Qt loop
     sys.exit(app.exec_())
 
 

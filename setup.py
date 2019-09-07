@@ -8,6 +8,6 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        caribou=caribou.cli:run
+        caribou=caribou.cli:main
     ''',
 )
