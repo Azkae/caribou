@@ -12,7 +12,7 @@ def _generate_uuid():
     return str(uuid.uuid4())
 
 
-@caribou.group('spot api')
+@caribou.group('api settings')
 @caribou.param('target', cls=caribou.Choice(list(BASE_URLS.keys())))
 @caribou.param('user_id', default='default-user', generator=_generate_uuid)
 def group(ctx, target, user_id):
