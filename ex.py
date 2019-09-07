@@ -49,6 +49,8 @@ def get_httpbin(ctx, test_header):
     return caribou.request.post(
         'http://httpbin.org/post',
         json={
-            'test': test_header
+            'test': test_header,
+            'test_number': 1,
+            'test_bool': True,
         }
     )

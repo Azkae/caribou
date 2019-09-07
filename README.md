@@ -17,6 +17,6 @@ Todos:
 - search in routes
 - auto reload config file
 - check for route / group duplicates
-- persist current parameter values
+- persist parameter values
 - fix request preview for Content-Type other than json
-- syntax highlighting
+- add open in editor button

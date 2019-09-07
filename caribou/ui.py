@@ -2,14 +2,15 @@ import sys
 import requests
 import json
 import traceback
+from pygments.token import Name, String, Number, Keyword
 from pygments import highlight
 from pygments.lexers import guess_lexer, JsonLexer
 from pygments.formatters import HtmlFormatter
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
                                QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
                                QTextEdit, QFrame, QComboBox, QTextBrowser)
-from PySide2.QtCore import Signal, QThread, QThreadPool, QRunnable, Slot, QObject
-from PySide2.QtGui import QIcon, QFont
+from PySide2.QtCore import Signal, QThread, QThreadPool, QRunnable, Slot, QObject, Qt
+from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor
 from .models import Route, Choice
 from .loader import load_file
 from .storage import save_parameter, load_parameter, get_parameter_values_for_route
@@ -119,6 +120,9 @@ class ParameterWidget(QWidget):
         self.preview_text_edit = QTextEdit()
         self.preview_text_edit.setFont(QFont('Fira Mono'))
         self.preview_text_edit.setReadOnly(True)
+
+        self.highlighter = TextHighlighter(self.preview_text_edit.document())
+
         self._update_preview()
 
         layout.addWidget(self.preview_text_edit)
@@ -214,6 +218,24 @@ class RequestWorker(QRunnable):
             self.signals.result.emit(traceback.format_exc())
 
 
+class TextHighlighter(QSyntaxHighlighter):
+    def highlightBlock(self, text):
+        string_format = QTextCharFormat()
+        string_format.setForeground(QColor('#E6DB74'))
+
+        number_format = QTextCharFormat()
+        number_format.setForeground(QColor('#AE81FF'))
+
+        current = 0
+        for tokentype, value in JsonLexer().get_tokens(text):
+            print(tokentype, value)
+            if tokentype in Name or tokentype in String:
+                self.setFormat(current, len(value), string_format)
+            elif tokentype in Number or tokentype in Keyword:
+                self.setFormat(current, len(value), number_format)
+            current += len(value)
+
+
 class ResultWidget(QWidget):
     def __init__(self, route=None):
         super().__init__()
@@ -234,6 +256,9 @@ class ResultWidget(QWidget):
 
         self.result_text_edit = QTextEdit()
         self.result_text_edit.setReadOnly(True)
+        self.result_text_edit.setFont(QFont('Fira Mono'))
+
+        self.highlighter = TextHighlighter(self.result_text_edit.document())
 
         # self.result_text_edit = QTextBrowser()
 
@@ -256,6 +281,7 @@ class ResultWidget(QWidget):
 
     def set_text(self, text):
         self.result_text_edit.setPlainText(text)
+
         # html = highlight(text, JsonLexer(), HtmlFormatter(full=True))
         # print(html)
         # self.result_text_edit.setHtml(html)
