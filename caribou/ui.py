@@ -2,10 +2,11 @@ import sys
 import json
 import traceback
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
-                               QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QTextEdit, QFrame)
+                               QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
+                               QTextEdit, QFrame, QComboBox)
 from PySide2.QtCore import Signal
 from PySide2.QtGui import QIcon, QFont
-from .models import Route
+from .models import Route, Choice
 from .loader import load_file
 from .storage import save_parameter, load_parameter, get_parameter_values
 
@@ -44,6 +45,39 @@ TEMPLATE = '''{method} {url}
 '''
 
 
+class TextParameterWidget(QLineEdit):
+    updated_signal = Signal(str)
+
+    def __init__(self, parameter, current_value):
+        super().__init__()
+        self.setPlaceholderText(parameter.default)
+        self.default_value = None
+        if current_value is not None:
+            self.setText(current_value)
+        self.textChanged.connect(self.on_update)
+
+    def on_update(self):
+        self.updated_signal.emit(self.text())
+
+
+class ChoiceParameterWidget(QComboBox):
+    updated_signal = Signal(str)
+
+    def __init__(self, parameter, current_value):
+        super().__init__()
+        self.addItems(parameter.cls.options)
+        self.default_value = None
+        if current_value is not None:
+            self.setCurrentText(current_value)
+        else:
+            self.default_value = parameter.cls.options[0]
+            self.setCurrentText(self.default_value)
+        self.currentTextChanged.connect(self.on_update)
+
+    def on_update(self, value):
+        self.updated_signal.emit(value)
+
+
 class ParameterWidget(QWidget):
     def __init__(self, route=None):
         super().__init__()
@@ -54,7 +88,7 @@ class ParameterWidget(QWidget):
         if route is not None:
             if route.group is not None:
                 for parameter in route.group.parameters:
-                    param_layout, line_edit = self._create_parameter_layout(
+                    param_layout = self._create_parameter_layout(
                         route.group.storage_prefix,
                         parameter
                     )
@@ -66,7 +100,7 @@ class ParameterWidget(QWidget):
                 layout.addWidget(line)
 
             for parameter in route.parameters:
-                param_layout, line_edit = self._create_parameter_layout(
+                param_layout = self._create_parameter_layout(
                     route.storage_prefix,
                     parameter
                 )
@@ -119,28 +153,29 @@ class ParameterWidget(QWidget):
             self.preview_text_edit.setPlainText(traceback.format_exc())
 
     def _create_parameter_layout(self, prefix, parameter):
-        layout = QHBoxLayout()
-
-        layout.addWidget(QLabel(parameter.name))
-
-        line_edit = QLineEdit()
-        line_edit.setPlaceholderText(parameter.default)
-
-        saved_value = load_parameter(prefix, parameter)
-        if saved_value is not None:
-            line_edit.setText(saved_value)
-
-        def update_storage():
+        def on_updated_param(value):
             global GLOBAL_STORAGE
 
-            save_parameter(prefix, parameter, line_edit.text())
+            save_parameter(prefix, parameter, value)
             self._update_preview()
 
-        line_edit.textChanged.connect(update_storage)
+        layout = QHBoxLayout()
+        layout.addWidget(QLabel(parameter.name))
 
-        layout.addWidget(line_edit)
+        saved_value = load_parameter(prefix, parameter)
 
-        return layout, line_edit
+        if parameter.cls is None:
+            widget = TextParameterWidget(parameter, saved_value)
+        elif isinstance(parameter.cls, Choice):
+            widget = ChoiceParameterWidget(parameter, saved_value)
+
+        if widget.default_value is not None:
+            save_parameter(prefix, parameter, widget.default_value)
+
+        widget.updated_signal.connect(on_updated_param)
+
+        layout.addWidget(widget)
+        return layout
 
 
 class MainWidget(QWidget):

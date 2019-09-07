@@ -15,7 +15,9 @@ def get_parameter_values(prefix, parameters):
     values = {}
     for param in parameters:
         storage_path = param.storage_path(prefix)
-        if storage_path not in GLOBAL_STORAGE:
+        value = GLOBAL_STORAGE.get(storage_path)
+
+        if value is None or value == '':
             if param.required:
                 raise Exception('Missing parameter: %s' % param.name)
             values[param.name] = param.default

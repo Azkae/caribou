@@ -1,4 +1,8 @@
-from typing import NamedTuple, Callable, Union
+from typing import NamedTuple, Callable, Union, List
+
+
+class Choice(NamedTuple):
+    options: List[str]
 
 
 class Request(NamedTuple):
@@ -14,6 +18,7 @@ class Parameter(NamedTuple):
     default: str = ''
     required: bool = False
     generator: Callable[[], str] = None
+    cls: str = None
 
     def storage_path(self, prefix):
         return '%s.%s' % (prefix, self.name)
@@ -24,7 +29,8 @@ class Route:
         from .loader import register_route
         self.group = group
         self.func = func
-        self.parameters = getattr(func, '__caribou_params__', [])
+        parameters = getattr(func, '__caribou_params__', [])
+        self.parameters = list(reversed(parameters))
 
         register_route(self)
 
@@ -61,8 +67,9 @@ class Route:
 class Group:
     def __init__(self, func, name):
         self.func = func
-        self.parameters = getattr(func, '__caribou_params__', [])
         self.name = name
+        parameters = getattr(func, '__caribou_params__', [])
+        self.parameters = list(reversed(parameters))
 
     @property
     def storage_prefix(self):
