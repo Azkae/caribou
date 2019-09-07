@@ -16,6 +16,9 @@ from .storage import save_parameter, load_parameter, get_parameter_values_for_ro
 
 CURRENT_DIR = os.path.dirname(__file__)
 
+FONT = QFont('Fira Mono')
+TEXT_FONT = QFont('Fira Mono')
+
 
 class RouteList(QWidget):
     new_route_signal = Signal(Route)
@@ -24,6 +27,7 @@ class RouteList(QWidget):
         button = QPushButton(route.display_name)
         button.setCheckable(True)
         button.setAutoExclusive(True)
+        button.setFont(FONT)
 
         def cb():
             self.new_route_signal.emit(route)
@@ -92,7 +96,7 @@ class TextParameterWidget(QLineEdit):
 
     def __init__(self, parameter, current_value):
         super().__init__()
-        self.setFont(QFont('Fira Mono'))
+        self.setFont(TEXT_FONT)
         self.setPlaceholderText(parameter.default)
         self.default_value = None
         if current_value is not None:
@@ -161,7 +165,7 @@ class ParameterWidget(QWidget):
                 layout.addLayout(param_layout)
 
         self.preview_text_edit = QTextEdit()
-        self.preview_text_edit.setFont(QFont('Fira Mono'))
+        self.preview_text_edit.setFont(TEXT_FONT)
         self.preview_text_edit.setReadOnly(True)
 
         self.highlighter = TextHighlighter(self.preview_text_edit.document())
@@ -210,7 +214,9 @@ class ParameterWidget(QWidget):
             self._update_preview()
 
         layout = QHBoxLayout()
-        layout.addWidget(QLabel(parameter.name))
+        label = QLabel(parameter.name)
+        label.setFont(FONT)
+        layout.addWidget(label)
 
         saved_value = load_parameter(prefix, parameter)
 
@@ -308,7 +314,7 @@ class ResultWidget(QWidget):
 
         self.result_text_edit = QTextEdit()
         self.result_text_edit.setReadOnly(True)
-        self.result_text_edit.setFont(QFont('Fira Mono'))
+        self.result_text_edit.setFont(TEXT_FONT)
 
         self.highlighter = TextHighlighter(self.result_text_edit.document())
 
@@ -379,6 +385,7 @@ class MainWindow(QMainWindow):
     def __init__(self, routes):
         super().__init__()
 
+        self.setFont(FONT)
         self.widget = MainWidget(routes)
         self.setCentralWidget(self.widget)
         self.setWindowTitle('Caribou')
