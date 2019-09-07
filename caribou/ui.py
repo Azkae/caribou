@@ -73,10 +73,10 @@ class SearchRouteList(QWidget):
         self.setLayout(layout)
 
     def search(self):
-        text = self.search_line.text()
+        text = self.search_line.text().lower()
 
         for button in self.route_list.buttons:
-            visible = text in button.text()
+            visible = text in button.text().lower()
             button.setVisible(visible)
 
     def focus(self):
