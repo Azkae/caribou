@@ -195,6 +195,28 @@ class ParameterWidget(QWidget):
         return layout
 
 
+class ResultWidget(QWidget):
+    def __init__(self, route=None):
+        super().__init__()
+
+        layout = QVBoxLayout()
+        self.route = route
+
+        layout_send = QHBoxLayout()
+        self.send_button = QPushButton('Send')
+
+        layout_send.addStretch(1)
+        layout_send.addWidget(self.send_button)
+
+        layout.addLayout(layout_send)
+
+        self.result_text_edit = QTextEdit()
+        self.result_text_edit.setReadOnly(True)
+        layout.addWidget(self.result_text_edit)
+
+        self.setLayout(layout)
+
+
 class MainWidget(QWidget):
     def __init__(self, routes):
         super().__init__()
@@ -203,19 +225,27 @@ class MainWidget(QWidget):
 
         self.route_list_widget = RouteList(routes)
         self.parameter_widget = ParameterWidget()
+        self.result_widget = ResultWidget()
 
         self.route_list_widget.new_route_signal.connect(self.set_route)
 
         self.layout.addWidget(self.route_list_widget)
         self.layout.addWidget(self.parameter_widget)
+        self.layout.addWidget(self.result_widget)
 
         self.setLayout(self.layout)
 
     def set_route(self, route):
         self.layout.removeWidget(self.parameter_widget)
         self.parameter_widget.setParent(None)
+
+        self.layout.removeWidget(self.result_widget)
+        self.result_widget.setParent(None)
+
         self.parameter_widget = ParameterWidget(route)
+        self.result_widget = ResultWidget(route)
         self.layout.addWidget(self.parameter_widget)
+        self.layout.addWidget(self.result_widget)
 
 
 class MainWindow(QMainWindow):
