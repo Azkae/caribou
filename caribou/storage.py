@@ -24,3 +24,19 @@ def get_parameter_values(prefix, parameters):
         else:
             values[param.name] = GLOBAL_STORAGE[storage_path]
     return values
+
+
+def get_parameter_values_for_route(route):
+    if route.group is not None:
+        group_values = get_parameter_values(
+            route.group.storage_prefix,
+            route.group.parameters
+        )
+    else:
+        group_values = {}
+
+    route_values = get_parameter_values(
+        route.storage_prefix,
+        route.parameters
+    )
+    return group_values, route_values

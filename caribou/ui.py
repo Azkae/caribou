@@ -1,4 +1,5 @@
 import sys
+import requests
 import json
 import traceback
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
@@ -8,7 +9,7 @@ from PySide2.QtCore import Signal
 from PySide2.QtGui import QIcon, QFont
 from .models import Route, Choice
 from .loader import load_file
-from .storage import save_parameter, load_parameter, get_parameter_values
+from .storage import save_parameter, load_parameter, get_parameter_values_for_route
 
 
 class RouteList(QWidget):
@@ -126,27 +127,18 @@ class ParameterWidget(QWidget):
             return
 
         try:
-            if self.route.group is not None:
-                group_values = get_parameter_values(
-                    self.route.group.storage_prefix,
-                    self.route.group.parameters
-                )
-            else:
-                group_values = {}
-
-            route_values = get_parameter_values(
-                self.route.storage_prefix,
-                self.route.parameters
-            )
-
+            group_values, route_values = get_parameter_values_for_route(self.route)
             request = self.route.get_request(group_values, route_values)
 
-            headers = ['%s: %s' % (name, value) for name, value in request.headers.items()]
+            headers = []
+            if request.headers is not None:
+                headers = ['%s: %s' % (name, value) for name, value in request.headers.items()]
+
             body = ''
             if request.json is not None:
                 body = json.dumps(request.json, indent=4)
-            elif request.body is not None:
-                body = request.body
+            # elif request.body is not None:
+            #     body = request.body
 
             text = TEMPLATE.format(
                 method=request.method,
@@ -204,6 +196,7 @@ class ResultWidget(QWidget):
 
         layout_send = QHBoxLayout()
         self.send_button = QPushButton('Send')
+        self.send_button.clicked.connect(self.make_request)
 
         layout_send.addStretch(1)
         layout_send.addWidget(self.send_button)
@@ -215,6 +208,20 @@ class ResultWidget(QWidget):
         layout.addWidget(self.result_text_edit)
 
         self.setLayout(layout)
+
+    def make_request(self):
+        try:
+            group_values, route_values = get_parameter_values_for_route(self.route)
+            request = self.route.get_request(group_values, route_values)
+            r = requests.request(
+                request.method,
+                request.url,
+                headers=request.headers,
+                json=request.json,
+            )
+            self.result_text_edit.setPlainText(r.text)
+        except Exception:
+            self.result_text_edit.setPlainText(traceback.format_exc())
 
 
 class MainWidget(QWidget):

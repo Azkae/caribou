@@ -9,7 +9,6 @@ class Request(NamedTuple):
     url: str
     method: str
     headers: dict = None
-    body: Union[str, dict] = None
     json: dict = None
 
 

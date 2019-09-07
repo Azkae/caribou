@@ -46,9 +46,9 @@ def post_pet(ctx, pet_id):
 @caribou.route()
 @caribou.param('test_header')
 def get_httpbin(ctx, test_header):
-    return caribou.request.get(
-        'http://httpbin.org',
-        headers={
-            'X-Test': test_header
+    return caribou.request.post(
+        'http://httpbin.org/post',
+        json={
+            'test': test_header
         }
     )
