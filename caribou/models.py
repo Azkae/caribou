@@ -12,7 +12,11 @@ class Request(NamedTuple):
 class Parameter(NamedTuple):
     name: str
     default: str = ''
+    required: bool = False
     generator: Callable[[], str] = None
+
+    def storage_path(self, prefix):
+        return '%s.%s' % (prefix, self.name)
 
 
 class Route:
@@ -23,6 +27,10 @@ class Route:
         self.parameters = getattr(func, '__caribou_params__', [])
 
         register_route(self)
+
+    @property
+    def storage_prefix(self):
+        return 'routes.%s' % self.func.__name__
 
     @property
     def name(self):
@@ -55,6 +63,10 @@ class Group:
         self.func = func
         self.parameters = getattr(func, '__caribou_params__', [])
         self.name = name
+
+    @property
+    def storage_prefix(self):
+        return 'groups.%s' % self.func.__name__
 
     def __repr__(self):
         return 'Group(parameters={})'.format(

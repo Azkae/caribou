@@ -14,7 +14,7 @@ def _generate_uuid():
 
 @caribou.group('spot api')
 @caribou.param('target')
-@caribou.param('user_id', generator=_generate_uuid)
+@caribou.param('user_id', default='default-user', generator=_generate_uuid)
 def group(ctx, target, user_id):
     ctx['base_url'] = BASE_URLS[target]
     ctx['headers'] = {
@@ -28,6 +28,18 @@ def get_pet(ctx, pet_id):
     return caribou.request.get(
         ctx['base_url'] + '/v1/pet/' + pet_id,
         headers=ctx['headers']
+    )
+
+
+@group.route()
+@caribou.param('pet_id', default='1')
+def post_pet(ctx, pet_id):
+    return caribou.request.post(
+        ctx['base_url'] + '/v1/pet/' + pet_id,
+        headers=ctx['headers'],
+        json={
+            'hello': 'kitty'
+        }
     )
 
 

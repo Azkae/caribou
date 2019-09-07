@@ -1,20 +1,25 @@
 import sys
+import json
+import traceback
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
-                               QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QTextEdit)
+                               QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QTextEdit, QFrame)
 from PySide2.QtCore import Signal
-from PySide2.QtGui import QIcon
+from PySide2.QtGui import QIcon, QFont
 from .models import Route
 from .loader import load_file
+from .storage import save_parameter, load_parameter, get_parameter_values
 
 
 class RouteList(QWidget):
     new_route_signal = Signal(Route)
 
     def _create_route_widget(self, route):
+        button = QPushButton(route.display_name)
+        button.setCheckable(True)
+        button.setAutoExclusive(True)
+
         def cb():
             self.new_route_signal.emit(route)
-
-        button = QPushButton(route.display_name)
 
         button.clicked.connect(cb)
         return button
@@ -24,7 +29,8 @@ class RouteList(QWidget):
 
         layout = QVBoxLayout()
         for route in routes:
-            layout.addWidget(self._create_route_widget(route))
+            button = self._create_route_widget(route)
+            layout.addWidget(button)
 
         layout.addStretch(1)
 
@@ -43,18 +49,31 @@ class ParameterWidget(QWidget):
         super().__init__()
 
         layout = QVBoxLayout()
-
-        self.parameters = {}
         self.route = route
 
         if route is not None:
-            for parameter in route.parameters:
-                param_layout, line_edit = self._create_parameter_layout(parameter)
+            if route.group is not None:
+                for parameter in route.group.parameters:
+                    param_layout, line_edit = self._create_parameter_layout(
+                        route.group.storage_prefix,
+                        parameter
+                    )
+                    layout.addLayout(param_layout)
 
-                self.parameters[parameter] = line_edit
+                line = QFrame()
+                line.setFrameShape(QFrame.HLine)
+                line.setFrameShadow(QFrame.Sunken)
+                layout.addWidget(line)
+
+            for parameter in route.parameters:
+                param_layout, line_edit = self._create_parameter_layout(
+                    route.storage_prefix,
+                    parameter
+                )
                 layout.addLayout(param_layout)
 
         self.preview_text_edit = QTextEdit()
+        self.preview_text_edit.setFont(QFont('Fira Mono'))
         self.preview_text_edit.setReadOnly(True)
         self._update_preview()
 
@@ -66,35 +85,58 @@ class ParameterWidget(QWidget):
         if self.route is None:
             return
 
-        group_values = {
-            'target': 'prod',
-            'user_id': 'AZE'
-        }
+        try:
+            if self.route.group is not None:
+                group_values = get_parameter_values(
+                    self.route.group.storage_prefix,
+                    self.route.group.parameters
+                )
+            else:
+                group_values = {}
 
-        route_values = {
-            'source_id': 'test'
-        }
+            route_values = get_parameter_values(
+                self.route.storage_prefix,
+                self.route.parameters
+            )
 
-        request = self.route.get_request(group_values, route_values)
-        headers = ['%s: %s' % (name, value) for name, value in request.headers.items()]
+            request = self.route.get_request(group_values, route_values)
 
-        text = TEMPLATE.format(
-            method=request.method,
-            url=request.url,
-            headers='\n'.join(headers),
-            body=request.body,
-        )
+            headers = ['%s: %s' % (name, value) for name, value in request.headers.items()]
+            body = ''
+            if request.json is not None:
+                body = json.dumps(request.json, indent=4)
+            elif request.body is not None:
+                body = request.body
 
-        self.preview_text_edit.setPlainText(text)
+            text = TEMPLATE.format(
+                method=request.method,
+                url=request.url,
+                headers='\n'.join(headers),
+                body=body,
+            )
+            self.preview_text_edit.setPlainText(text)
+        except Exception:
+            self.preview_text_edit.setPlainText(traceback.format_exc())
 
-    def _create_parameter_layout(self, parameter):
+    def _create_parameter_layout(self, prefix, parameter):
         layout = QHBoxLayout()
 
         layout.addWidget(QLabel(parameter.name))
 
         line_edit = QLineEdit()
         line_edit.setPlaceholderText(parameter.default)
-        line_edit.textChanged.connect(self._update_preview)
+
+        saved_value = load_parameter(prefix, parameter)
+        if saved_value is not None:
+            line_edit.setText(saved_value)
+
+        def update_storage():
+            global GLOBAL_STORAGE
+
+            save_parameter(prefix, parameter, line_edit.text())
+            self._update_preview()
+
+        line_edit.textChanged.connect(update_storage)
 
         layout.addWidget(line_edit)
 
@@ -141,11 +183,13 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.widget)
         self.setWindowTitle('Caribou')
         self.setWindowIcon(QIcon('icon.png'))
+        self.resize(900, 600)
 
 
 def run():
     # Create the Qt Application
     app = QApplication(sys.argv)
+    # QApplication.setFont(QFont('Roboto'))
     # Create and show the form
     form = MainWindow()
     form.show()
