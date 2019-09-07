@@ -15,9 +15,9 @@ class Request(NamedTuple):
 class Parameter(NamedTuple):
     name: str
     default: str = ''
-    required: bool = False
+    required: bool = True
     generator: Callable[[], str] = None
-    cls: str = None
+    type: Choice = None
 
     def storage_path(self, prefix):
         return '%s.param.%s' % (prefix, self.name)

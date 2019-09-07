@@ -1,3 +1,14 @@
+import os
+import json
+
+VERSION = 1
+
+
+class MissingParameter(Exception):
+    def __init__(self, parameter_name):
+        self.parameter_name = parameter_name
+
+
 GLOBAL_STORAGE = {}
 
 
@@ -29,7 +40,7 @@ def get_parameter_values(prefix, parameters):
 
         if value is None or value == '':
             if param.required:
-                raise Exception('Missing parameter: %s' % param.name)
+                raise MissingParameter(param.name)
             values[param.name] = param.default
         else:
             values[param.name] = GLOBAL_STORAGE[storage_path]
@@ -50,3 +61,22 @@ def get_parameter_values_for_route(route):
         route.parameters
     )
     return group_values, route_values
+
+
+# XXX: cleanup
+def load_storage():
+    global GLOBAL_STORAGE
+    if os.path.exists('/tmp/caribou'):
+        with open('/tmp/caribou') as f:
+            data = json.load(f)
+            if data['version'] != VERSION:
+                return
+            GLOBAL_STORAGE = data['data']
+
+
+def persist_storage():
+    with open('/tmp/caribou', 'w') as f:
+        json.dump({
+            'version': VERSION,
+            'data': GLOBAL_STORAGE
+        }, f)

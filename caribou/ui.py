@@ -1,19 +1,20 @@
 import sys
+import os
 import requests
 import json
 import traceback
 from pygments.token import Name, String, Number, Keyword
-from pygments import highlight
-from pygments.lexers import guess_lexer, JsonLexer
-from pygments.formatters import HtmlFormatter
+from pygments.lexers import JsonLexer
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
                                QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
-                               QTextEdit, QFrame, QComboBox, QTextBrowser)
-from PySide2.QtCore import Signal, QThread, QThreadPool, QRunnable, Slot, QObject, Qt
+                               QTextEdit, QFrame, QComboBox)
+from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject
 from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor
 from .models import Route, Choice
 from .loader import load_file
-from .storage import save_parameter, load_parameter, get_parameter_values_for_route, load_request_result, save_request_result
+from .storage import save_parameter, load_parameter, get_parameter_values_for_route, load_request_result, save_request_result, MissingParameter, persist_storage, load_storage
+
+CURRENT_DIR = os.path.dirname(__file__)
 
 
 class RouteList(QWidget):
@@ -51,7 +52,7 @@ TEMPLATE = '''{method} {url}
 
 
 class TextParameterWidget(QLineEdit):
-    updated_signal = Signal(str)
+    updated_signal = Signal(object)
 
     def __init__(self, parameter, current_value):
         super().__init__()
@@ -69,24 +70,29 @@ class TextParameterWidget(QLineEdit):
 
 
 class ChoiceParameterWidget(QComboBox):
-    updated_signal = Signal(str)
+    updated_signal = Signal(object)
 
     def __init__(self, parameter, current_value):
         super().__init__()
-        self.addItems(parameter.cls.options)
+        self.parameter = parameter
+        self.addItems(list(map(str, parameter.type.options)))
         self.default_value = None
         if current_value is not None:
-            self.setCurrentText(current_value)
+            self.set_value(current_value)
         else:
-            self.default_value = parameter.cls.options[0]
-            self.setCurrentText(self.default_value)
-        self.currentTextChanged.connect(self.on_update)
+            self.default_value = parameter.type.options[0]
+            self.setCurrentIndex(0)
+        self.currentIndexChanged.connect(self.on_update)
 
-    def on_update(self, value):
-        self.updated_signal.emit(value)
+    def on_update(self, index):
+        self.updated_signal.emit(self.parameter.type.options[index])
 
     def set_value(self, value):
-        self.setCurrentText(value)
+        try:
+            index = self.parameter.type.options.index(value)
+            self.setCurrentIndex(index)
+        except ValueError:
+            print('Value %s not supported for parameter %s' % self.parameter)
 
 
 class ParameterWidget(QWidget):
@@ -143,7 +149,7 @@ class ParameterWidget(QWidget):
 
             body = ''
             if request.json is not None:
-                body = json.dumps(request.json, indent=4)
+                body = json.dumps(request.json, indent=2)
             # elif request.body is not None:
             #     body = request.body
 
@@ -154,6 +160,8 @@ class ParameterWidget(QWidget):
                 body=body,
             )
             self.preview_text_edit.setPlainText(text)
+        except MissingParameter as e:
+            self.preview_text_edit.setPlainText('Missing parameter: %s' % e.parameter_name)
         except Exception:
             self.preview_text_edit.setPlainText(traceback.format_exc())
 
@@ -169,9 +177,9 @@ class ParameterWidget(QWidget):
 
         saved_value = load_parameter(prefix, parameter)
 
-        if parameter.cls is None:
+        if parameter.type is None:
             widget = TextParameterWidget(parameter, saved_value)
-        elif isinstance(parameter.cls, Choice):
+        elif isinstance(parameter.type, Choice):
             widget = ChoiceParameterWidget(parameter, saved_value)
         else:
             raise Exception('Widget not supported')
@@ -213,7 +221,12 @@ class RequestWorker(QRunnable):
                 **self.kwargs
             )
 
-            self.signals.result.emit(r.text)
+            try:
+                json_response = r.json()
+                text = json.dumps(json_response, indent=2)
+            except ValueError:
+                text = r.text
+            self.signals.result.emit(text)
         except Exception:
             self.signals.result.emit(traceback.format_exc())
 
@@ -272,20 +285,26 @@ class ResultWidget(QWidget):
 
     def make_request(self):
         self.result_text_edit.setPlainText('Loading..')
-        group_values, route_values = get_parameter_values_for_route(self.route)
-        request = self.route.get_request(group_values, route_values)
-        worker = RequestWorker(
-            request.method,
-            request.url,
-            headers=request.headers,
-            json=request.json,
-        )
-        worker.signals.result.connect(self.set_result)
-        self.thread_pool.start(worker)
+        try:
+            group_values, route_values = get_parameter_values_for_route(self.route)
+            request = self.route.get_request(group_values, route_values)
+            worker = RequestWorker(
+                request.method,
+                request.url,
+                headers=request.headers,
+                json=request.json,
+            )
+            worker.signals.result.connect(self.set_result)
+            self.thread_pool.start(worker)
+        except MissingParameter as e:
+            self.result_text_edit.setPlainText('Missing parameter: %s' % e.parameter_name)
+        except Exception:
+            self.result_text_edit.setPlainText(traceback.format_exc())
 
     def set_result(self, text):
         self.result_text_edit.setPlainText(text)
         save_request_result(self.route, text)
+        persist_storage()
 
 
 class MainWidget(QWidget):
@@ -326,11 +345,12 @@ class MainWindow(QMainWindow):
         self.widget = MainWidget(routes)
         self.setCentralWidget(self.widget)
         self.setWindowTitle('Caribou')
-        self.setWindowIcon(QIcon('icon.png'))
+        self.setWindowIcon(QIcon(os.path.join(CURRENT_DIR, 'icon.png')))
         self.resize(1100, 600)
 
 
 def run(path):
+    load_storage()
     routes = load_file(path)
 
     app = QApplication(sys.argv)

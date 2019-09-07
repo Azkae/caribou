@@ -13,7 +13,7 @@ def _generate_uuid():
 
 
 @caribou.group('api settings')
-@caribou.param('target', cls=caribou.Choice(list(BASE_URLS.keys())))
+@caribou.param('target', type=caribou.Choice(list(BASE_URLS.keys())))
 @caribou.param('user_id', default='default-user', generator=_generate_uuid)
 def api(ctx, target, user_id):
     ctx['base_url'] = BASE_URLS[target]
