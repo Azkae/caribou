@@ -14,9 +14,9 @@ caribou ex.py
 
 Todos:
 
-- actually send the request
 - search in routes
 - auto reload config file
 - check for route / group duplicates
 - persist current parameter values
 - fix request preview for Content-Type other than json
+- syntax highlighting

@@ -2,10 +2,13 @@ import sys
 import requests
 import json
 import traceback
+from pygments import highlight
+from pygments.lexers import guess_lexer, JsonLexer
+from pygments.formatters import HtmlFormatter
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
                                QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
-                               QTextEdit, QFrame, QComboBox)
-from PySide2.QtCore import Signal
+                               QTextEdit, QFrame, QComboBox, QTextBrowser)
+from PySide2.QtCore import Signal, QThread, QThreadPool, QRunnable, Slot, QObject
 from PySide2.QtGui import QIcon, QFont
 from .models import Route, Choice
 from .loader import load_file
@@ -187,12 +190,38 @@ class ParameterWidget(QWidget):
         return layout
 
 
+class WorkerSignals(QObject):
+    result = Signal(str)
+
+
+class RequestWorker(QRunnable):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()
+
+    @Slot()
+    def run(self):
+        try:
+            r = requests.request(
+                *self.args,
+                **self.kwargs
+            )
+
+            self.signals.result.emit(r.text)
+        except Exception:
+            self.signals.result.emit(traceback.format_exc())
+
+
 class ResultWidget(QWidget):
     def __init__(self, route=None):
         super().__init__()
 
         layout = QVBoxLayout()
         self.route = route
+
+        self.thread_pool = QThreadPool()
 
         layout_send = QHBoxLayout()
         self.send_button = QPushButton('Send')
@@ -205,23 +234,31 @@ class ResultWidget(QWidget):
 
         self.result_text_edit = QTextEdit()
         self.result_text_edit.setReadOnly(True)
+
+        # self.result_text_edit = QTextBrowser()
+
         layout.addWidget(self.result_text_edit)
 
         self.setLayout(layout)
 
     def make_request(self):
-        try:
-            group_values, route_values = get_parameter_values_for_route(self.route)
-            request = self.route.get_request(group_values, route_values)
-            r = requests.request(
-                request.method,
-                request.url,
-                headers=request.headers,
-                json=request.json,
-            )
-            self.result_text_edit.setPlainText(r.text)
-        except Exception:
-            self.result_text_edit.setPlainText(traceback.format_exc())
+        self.set_text('Loading..')
+        group_values, route_values = get_parameter_values_for_route(self.route)
+        request = self.route.get_request(group_values, route_values)
+        worker = RequestWorker(
+            request.method,
+            request.url,
+            headers=request.headers,
+            json=request.json,
+        )
+        worker.signals.result.connect(self.set_text)
+        self.thread_pool.start(worker)
+
+    def set_text(self, text):
+        self.result_text_edit.setPlainText(text)
+        # html = highlight(text, JsonLexer(), HtmlFormatter(full=True))
+        # print(html)
+        # self.result_text_edit.setHtml(html)
 
 
 class MainWidget(QWidget):
@@ -263,7 +300,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.widget)
         self.setWindowTitle('Caribou')
         self.setWindowIcon(QIcon('icon.png'))
-        self.resize(900, 600)
+        self.resize(1100, 600)
 
 
 def run(path):
