@@ -19,4 +19,4 @@ Todos:
 - auto reload config file
 - check for route / group duplicates
 - persist current parameter values
-- fix request preview for other Content-Type than json
+- fix request preview for Content-Type other than json
