@@ -63,6 +63,7 @@ class SearchRouteList(QWidget):
         self.search_line = QLineEdit()
         self.search_line.setPlaceholderText('Search')
         self.search_line.textChanged.connect(self.search)
+        self.search_line.returnPressed.connect(self.select_first_visible)
 
         layout = QVBoxLayout()
         layout.addWidget(self.search_line)
@@ -73,11 +74,17 @@ class SearchRouteList(QWidget):
         self.setLayout(layout)
 
     def search(self):
-        text = self.search_line.text().lower()
+        text_elements = self.search_line.text().lower().split(' ')
 
         for button in self.route_list.buttons:
-            visible = text in button.text().lower()
+            visible = all(text_element in button.text().lower() for text_element in text_elements)
             button.setVisible(visible)
+
+    def select_first_visible(self):
+        for button in self.route_list.buttons:
+            if button.isVisible():
+                button.animateClick()
+                return
 
     def focus(self):
         self.search_line.setFocus()
