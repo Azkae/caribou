@@ -7,9 +7,9 @@ from pygments.token import Name, String, Number, Keyword
 from pygments.lexers import JsonLexer
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
                                QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
-                               QTextEdit, QFrame, QComboBox, QScrollArea, QShortcut)
-from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject
-from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor, QKeySequence
+                               QTextEdit, QPlainTextEdit, QFrame, QComboBox, QScrollArea, QShortcut)
+from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject, Qt
+from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor, QKeySequence, QTextDocument, QTextCursor
 from .models import Route, Choice
 from .loader import load_file
 from .storage import save_parameter, load_parameter, get_parameter_values_for_route, load_request_result, save_request_result, MissingParameter, persist_storage, load_storage
@@ -308,13 +308,26 @@ class ResultWidget(QWidget):
         self.send_button.clicked.connect(self.make_request)
 
         layout_send.addStretch(1)
+
+        self.search_line = QLineEdit()
+        self.search_line.setPlaceholderText('Search')
+        self.search_line.textChanged.connect(self.search_result_reset)
+        self.search_line.returnPressed.connect(self.search_result)
+
+        layout_send.addWidget(self.search_line)
         layout_send.addWidget(self.send_button)
 
         layout.addLayout(layout_send)
 
-        self.result_text_edit = QTextEdit()
+        self.result_text_edit = QPlainTextEdit()
         self.result_text_edit.setReadOnly(True)
         self.result_text_edit.setFont(TEXT_FONT)
+        self.result_text_edit.setContextMenuPolicy(Qt.NoContextMenu)
+
+        self.shortcut = QShortcut(QKeySequence("Ctrl+Shift+f"), self, self.focus)
+        self.shortcut = QShortcut(QKeySequence("Ctrl+Return"), self, self.make_request)
+
+        self.result_text_edit.setUndoRedoEnabled(False)
 
         self.highlighter = TextHighlighter(self.result_text_edit.document())
 
@@ -325,6 +338,24 @@ class ResultWidget(QWidget):
             self.result_text_edit.setPlainText(saved_result)
 
         self.setLayout(layout)
+
+    def goto_start(self):
+        c = self.result_text_edit.textCursor()
+        c.movePosition(QTextCursor.Start, QTextCursor.MoveAnchor, 1)
+        self.result_text_edit.setTextCursor(c)
+
+    def search_result_reset(self):
+        self.goto_start()
+        self.search_result()
+
+    def search_result(self):
+        r = self.result_text_edit.find(self.search_line.text(), QTextDocument.FindCaseSensitively)
+        if not r:
+            self.goto_start()
+
+    def focus(self):
+        self.search_line.setFocus()
+        self.search_line.selectAll()
 
     def make_request(self):
         self.result_text_edit.setPlainText('Loading..')
@@ -345,7 +376,9 @@ class ResultWidget(QWidget):
             self.result_text_edit.setPlainText(traceback.format_exc())
 
     def set_result(self, text):
+        self.result_text_edit.setUpdatesEnabled(False)
         self.result_text_edit.setPlainText(text)
+        self.result_text_edit.setUpdatesEnabled(True)
         save_request_result(self.route, text)
         persist_storage()
 

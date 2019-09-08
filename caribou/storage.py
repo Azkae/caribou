@@ -10,26 +10,23 @@ class MissingParameter(Exception):
 
 
 GLOBAL_STORAGE = {}
+TEMPORARY_STORAGE = {}
 
 
 def save_parameter(prefix, parameter, value):
-    global GLOBAL_STORAGE
     GLOBAL_STORAGE[parameter.storage_path(prefix)] = value
 
 
 def load_parameter(prefix, parameter):
-    global GLOBAL_STORAGE
     return GLOBAL_STORAGE.get(parameter.storage_path(prefix))
 
 
 def save_request_result(route, value):
-    global GLOBAL_STORAGE
-    GLOBAL_STORAGE['%s.result' % route.storage_prefix] = value
+    TEMPORARY_STORAGE['%s.result' % route.storage_prefix] = value
 
 
 def load_request_result(route):
-    global GLOBAL_STORAGE
-    return GLOBAL_STORAGE.get('%s.result' % route.storage_prefix)
+    return TEMPORARY_STORAGE.get('%s.result' % route.storage_prefix)
 
 
 def get_parameter_values(prefix, parameters):
