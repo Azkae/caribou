@@ -1,5 +1,5 @@
 import sys
-from .ui import run
+from caribou.ui import run
 
 
 def main():
@@ -7,3 +7,7 @@ def main():
         print('Usage: caribou <file.py>')
         exit(1)
     run(sys.argv[1])
+
+
+if __name__ == '__main__':
+    main()

@@ -1,4 +1,5 @@
 from setuptools import setup
+# from cx_Freeze import setup, Executable
 
 setup(
     name='caribou',
@@ -10,4 +11,7 @@ setup(
         [console_scripts]
         caribou=caribou.cli:main
     ''',
+    # executables=[
+    #     Executable('caribou/cli.py')
+    # ]
 )

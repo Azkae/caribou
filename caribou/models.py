@@ -14,7 +14,7 @@ class Request(NamedTuple):
 
 class Parameter(NamedTuple):
     name: str
-    default: str = ''
+    default: str = None
     required: bool = True
     generator: Callable[[], str] = None
     type: Choice = None
