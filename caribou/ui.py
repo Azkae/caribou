@@ -9,7 +9,7 @@ from pygments.lexers import JsonLexer
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
                                QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
                                QTextEdit, QPlainTextEdit, QFrame, QComboBox, QScrollArea, QShortcut)
-from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject, Qt
+from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject, Qt, QFileSystemWatcher
 from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor, QKeySequence, QTextDocument, QTextCursor
 from .models import Route, Choice
 from .loader import load_file
@@ -216,6 +216,7 @@ class ParameterWidget(QWidget):
                 headers='\n'.join(headers),
                 body=body,
             )
+
             self.preview_text_edit.setPlainText(text)
         except MissingParameter as e:
             self.preview_text_edit.setPlainText('Missing parameter: %s' % e.parameter_name)
@@ -363,7 +364,13 @@ class ResultWidget(QWidget):
         self.search_result()
 
     def search_result(self):
-        r = self.result_text_edit.find(self.search_line.text(), QTextDocument.FindCaseSensitively)
+        search_settings = QTextDocument.FindCaseSensitively
+
+        mod = QApplication.keyboardModifiers()
+        if (mod & Qt.ShiftModifier) != 0:
+            search_settings |= QTextDocument.FindBackward
+
+        r = self.result_text_edit.find(self.search_line.text(), search_settings)
         if not r:
             self.goto_start()
 
@@ -430,22 +437,39 @@ class MainWidget(QWidget):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, routes):
+    def __init__(self, path):
         super().__init__()
 
+        self.path = path
+
+        self.file_watcher = QFileSystemWatcher()
+        self.file_watcher.addPath(path)
+        self.file_watcher.fileChanged.connect(self.reload)
+
         self.setFont(FONT)
-        self.widget = MainWidget(routes)
-        self.setCentralWidget(self.widget)
         self.setWindowTitle('Caribou')
         self.setWindowIcon(QIcon(os.path.join(CURRENT_DIR, 'icon.png')))
 
+        routes = load_file(path)
+        self.widget = MainWidget(routes)
+        self.setCentralWidget(self.widget)
+
+    def reload(self, path):
+        print('reload')
+        routes = load_file(self.path)
+        self.widget.setParent(None)
+        self.widget = MainWidget(routes)
+        self.setCentralWidget(self.widget)
+
 
 def run(path):
+
+    import PySide2
+
     load_storage()
-    routes = load_file(path)
 
     app = QApplication(sys.argv)
-    form = MainWindow(routes)
+    form = MainWindow(path)
 
     geometry = app.desktop().availableGeometry()
     width = geometry.width() * 0.8

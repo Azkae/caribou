@@ -19,7 +19,7 @@ def hook_context():
         yield
     finally:
         with lock:
-            hook_enabled = True
+            hook_enabled = False
 
 
 def register_route(route):
