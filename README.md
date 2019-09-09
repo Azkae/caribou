@@ -16,3 +16,8 @@ Todos:
 - check for route / group duplicates
 - fix request preview for Content-Type other than json
 - add open in editor button
+- add the ability to edit the raw preview
+- search backward
+- add color for get & post in readme
+- add a list type? (which widget?)
+- package in a .app

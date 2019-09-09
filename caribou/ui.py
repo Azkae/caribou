@@ -3,6 +3,7 @@ import os
 import requests
 import json
 import traceback
+from requests.models import PreparedRequest
 from pygments.token import Name, String, Number, Keyword
 from pygments.lexers import JsonLexer
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
@@ -111,7 +112,7 @@ class TextParameterWidget(QLineEdit):
         self.textChanged.connect(self.on_update)
 
     def on_update(self):
-        self.updated_signal.emit(self.text())
+        self.updated_signal.emit(self.text().strip())
 
     def set_value(self, value):
         self.setText(value)
@@ -205,9 +206,13 @@ class ParameterWidget(QWidget):
             # elif request.body is not None:
             #     body = request.body
 
+            req = PreparedRequest()
+            req.prepare_url(request.url, request.params)
+            url = req.url
+
             text = TEMPLATE.format(
                 method=request.method,
-                url=request.url,
+                url=url,
                 headers='\n'.join(headers),
                 body=body,
             )
@@ -219,8 +224,6 @@ class ParameterWidget(QWidget):
 
     def _create_parameter_layout(self, prefix, parameter):
         def on_updated_param(value):
-            global GLOBAL_STORAGE
-
             save_parameter(prefix, parameter, value)
             self._update_preview()
 
@@ -376,6 +379,7 @@ class ResultWidget(QWidget):
             worker = RequestWorker(
                 request.method,
                 request.url,
+                params=request.params,
                 headers=request.headers,
                 json=request.json,
             )

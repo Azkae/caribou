@@ -8,6 +8,7 @@ class Choice(NamedTuple):
 class Request(NamedTuple):
     url: str
     method: str
+    params: dict = None
     headers: dict = None
     json: dict = None
 
