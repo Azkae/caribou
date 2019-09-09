@@ -441,7 +441,14 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         if path is None:
-            path = QFileDialog.getOpenFileName(self, "Open File", "/", "Python file (*.py)")[0]
+            path = QFileDialog.getOpenFileName(
+                self,
+                "Open File", os.path.expanduser("~"), "Python file (*.py)"
+            )[0]
+
+        if path is None:
+            print('No file selected, exiting')
+            sys.exit(1)
 
         self.path = path
 
