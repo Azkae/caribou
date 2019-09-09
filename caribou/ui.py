@@ -122,15 +122,19 @@ class ChoiceParameterWidget(QComboBox):
 
     def __init__(self, parameter, current_value):
         super().__init__()
+        self.currentIndexChanged.connect(self.on_update)
         self.parameter = parameter
         self.addItems(list(map(str, parameter.type.options)))
         self.default_value = None
         if current_value is not None:
-            self.set_value(current_value)
+            try:
+                self.set_value(current_value)
+            except Exception as e:
+                self.setCurrentIndex(0)
+                print(e)
         else:
             self.default_value = parameter.type.options[0]
             self.setCurrentIndex(0)
-        self.currentIndexChanged.connect(self.on_update)
 
     def on_update(self, index):
         self.updated_signal.emit(self.parameter.type.options[index])
@@ -430,7 +434,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.widget)
         self.setWindowTitle('Caribou')
         self.setWindowIcon(QIcon(os.path.join(CURRENT_DIR, 'icon.png')))
-        self.resize(1200, 600)
 
 
 def run(path):
@@ -439,6 +442,12 @@ def run(path):
 
     app = QApplication(sys.argv)
     form = MainWindow(routes)
+
+    geometry = app.desktop().availableGeometry()
+    width = geometry.width() * 0.8
+    height = geometry.height() * 0.8
+    form.resize(width, height)
+
     form.show()
     sys.exit(app.exec_())
 

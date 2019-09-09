@@ -2,8 +2,7 @@ import uuid
 import caribou
 
 BASE_URLS = {
-    "prod": "https://prod.example.com",
-    "staging": "https://staging.example.com",
+    "prod": "https://httpbin.org",
     "local": "http://localhost:8080",
 }
 
@@ -23,33 +22,12 @@ def api(ctx, target, user_id):
 
 
 @api.route()
-@caribou.param('pet_id')
-def get_pet(ctx, pet_id):
-    return caribou.request.get(
-        ctx['base_url'] + '/v1/pet/' + pet_id,
-        headers=ctx['headers']
-    )
-
-
-@api.route()
-@caribou.param('pet_id', default='1')
-def post_pet(ctx, pet_id):
-    return caribou.request.post(
-        ctx['base_url'] + '/v1/pet/' + pet_id,
-        headers=ctx['headers'],
-        json={
-            'hello': 'kitty'
-        }
-    )
-
-
-@caribou.route()
-@caribou.param('test_header')
-def get_httpbin(ctx, test_header):
+@caribou.param('value')
+def get_httpbin(ctx, value):
     return caribou.request.post(
         'http://httpbin.org/post',
         json={
-            'test': test_header,
+            'test_value': value,
             'test_number': 1,
             'test_bool': True,
         }
