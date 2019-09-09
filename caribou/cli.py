@@ -3,9 +3,8 @@ from caribou.ui import run
 
 
 def main():
-    if len(sys.argv) != 2:
-        print('Usage: caribou <file.py>')
-        exit(1)
+    if len(sys.argv) < 2:
+        path = None
     else:
         path = sys.argv[1]
     run(path)

@@ -8,7 +8,7 @@ from pygments.token import Name, String, Number, Keyword
 from pygments.lexers import JsonLexer
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
                                QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
-                               QTextEdit, QPlainTextEdit, QFrame, QComboBox, QScrollArea, QShortcut)
+                               QTextEdit, QPlainTextEdit, QFrame, QComboBox, QScrollArea, QShortcut, QFileDialog)
 from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject, Qt, QFileSystemWatcher
 from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor, QKeySequence, QTextDocument, QTextCursor
 from .models import Route, Choice
@@ -440,6 +440,9 @@ class MainWindow(QMainWindow):
     def __init__(self, path):
         super().__init__()
 
+        if path is None:
+            path = QFileDialog.getOpenFileName(self, "Open File", "/", "Python file (*.py)")[0]
+
         self.path = path
 
         self.file_watcher = QFileSystemWatcher()
@@ -455,17 +458,14 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.widget)
 
     def reload(self, path):
-        print('reload')
         routes = load_file(self.path)
-        self.widget.setParent(None)
+        if self.widget:
+            self.widget.setParent(None)
         self.widget = MainWidget(routes)
         self.setCentralWidget(self.widget)
 
 
-def run(path):
-
-    import PySide2
-
+def run(path=None):
     load_storage()
 
     app = QApplication(sys.argv)
