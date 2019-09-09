@@ -4,7 +4,7 @@ Create your own REST client GUI with a few line of code:
 see `ex.py` for a configuration example.
 
 ```
-pip install -e .
+pip3 install -e .
 caribou ex.py
 ```
 

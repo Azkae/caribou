@@ -7,6 +7,7 @@ setup(
     install_requires=[
         'pyside2',
         'Pygments',
+        'requests',
     ],
     entry_points='''
         [console_scripts]
