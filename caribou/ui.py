@@ -6,14 +6,24 @@ import traceback
 from requests.models import PreparedRequest
 from pygments.token import Name, String, Number, Keyword
 from pygments.lexers import JsonLexer
-from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
-                               QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
-                               QTextEdit, QPlainTextEdit, QFrame, QComboBox, QScrollArea, QShortcut, QFileDialog, QSplitter)
-from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject, Qt, QFileSystemWatcher, QEvent
-from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor, QKeySequence, QTextDocument, QTextCursor, QPalette
+from PySide2.QtWidgets import (
+    QLabel, QLineEdit, QPushButton, QApplication,
+    QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
+    QTextEdit, QPlainTextEdit, QFrame, QComboBox, QScrollArea,
+    QShortcut, QFileDialog, QSplitter, QAction, QMessageBox
+)
+from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject, Qt, QFileSystemWatcher
+from PySide2.QtGui import (
+    QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor,
+    QKeySequence, QTextDocument, QTextCursor, QPalette
+)
 from .models import Route, Choice
 from .loader import load_file
-from .storage import save_parameter, load_parameter, get_parameter_values_for_route, load_request_result, save_request_result, MissingParameter, persist_storage, load_storage
+from .storage import (
+    save_parameter, load_parameter, get_parameter_values_for_route,
+    load_request_result, save_request_result, MissingParameter,
+    persist_storage, load_storage, load_setting, save_setting
+)
 
 CURRENT_DIR = os.path.dirname(__file__)
 
@@ -101,50 +111,44 @@ TEMPLATE = '''{method} {url}
 class TextParameterWidget(QLineEdit):
     updated_signal = Signal(object)
 
-    def __init__(self, parameter, current_value):
+    def __init__(self, parameter):
         super().__init__()
         self.setFont(TEXT_FONT)
         self.setPlaceholderText(parameter.default)
-        self.default_value = None
-        if current_value is not None:
-            self.setText(current_value)
         self.textChanged.connect(self.on_update)
 
     def on_update(self):
         self.updated_signal.emit(self.text().strip())
 
     def set_value(self, value):
-        self.setText(value)
+        if value is None:
+            self.setText('')
+        else:
+            self.setText(value)
 
 
 class ChoiceParameterWidget(QComboBox):
     updated_signal = Signal(object)
 
-    def __init__(self, parameter, current_value):
+    def __init__(self, parameter):
         super().__init__()
         self.currentIndexChanged.connect(self.on_update)
         self.parameter = parameter
         self.addItems(list(map(str, parameter.type.options)))
-        self.default_value = None
-        if current_value is not None:
-            try:
-                self.set_value(current_value)
-            except Exception as e:
-                self.setCurrentIndex(0)
-                print(e)
-        else:
-            self.default_value = parameter.type.options[0]
-            self.setCurrentIndex(0)
 
     def on_update(self, index):
         self.updated_signal.emit(self.parameter.type.options[index])
 
     def set_value(self, value):
+        if value is None:
+            value = self.parameter.type.options[0]
         try:
             index = self.parameter.type.options.index(value)
             self.setCurrentIndex(index)
         except ValueError:
-            print('Value %s not supported for parameter %s' % self.parameter)
+            print('"%s" is not supported for parameter %s' % (value, self.parameter))
+            self.setCurrentIndex(0)
+            self.on_update(0)
 
 
 class ParameterWidget(QWidget):
@@ -153,6 +157,10 @@ class ParameterWidget(QWidget):
 
         layout = QVBoxLayout()
         self.route = route
+
+        self.preview_text_edit = QTextEdit()
+        self.preview_text_edit.setFont(TEXT_FONT)
+        self.preview_text_edit.setReadOnly(True)
 
         if route is not None:
             if route.group is not None:
@@ -174,10 +182,6 @@ class ParameterWidget(QWidget):
                     parameter
                 )
                 layout.addLayout(param_layout)
-
-        self.preview_text_edit = QTextEdit()
-        self.preview_text_edit.setFont(TEXT_FONT)
-        self.preview_text_edit.setReadOnly(True)
 
         self.highlighter = TextHighlighter(self.preview_text_edit.document())
 
@@ -232,19 +236,17 @@ class ParameterWidget(QWidget):
         label.setFont(FONT)
         layout.addWidget(label)
 
-        saved_value = load_parameter(prefix, parameter)
-
         if parameter.type is None:
-            widget = TextParameterWidget(parameter, saved_value)
+            widget = TextParameterWidget(parameter)
         elif isinstance(parameter.type, Choice):
-            widget = ChoiceParameterWidget(parameter, saved_value)
+            widget = ChoiceParameterWidget(parameter)
         else:
             raise Exception('Widget not supported')
 
-        if widget.default_value is not None:
-            save_parameter(prefix, parameter, widget.default_value)
-
         widget.updated_signal.connect(on_updated_param)
+
+        saved_value = load_parameter(prefix, parameter)
+        widget.set_value(saved_value)
 
         layout.addWidget(widget)
 
@@ -529,32 +531,69 @@ class MainWindow(QMainWindow):
     def __init__(self, path):
         super().__init__()
 
+        self.widget = None
+
         if path is None:
-            path = QFileDialog.getOpenFileName(
-                self,
-                "Open File", os.path.expanduser("~"), "Python file (*.py)"
-            )[0]
+            path = load_setting('file_path')
+
+        if path is None:
+            path = self.query_new_path()
 
         if path is None:
             print('No file selected, exiting')
             sys.exit(1)
 
-        self.path = path
+        self.open_file(path)
 
-        self.file_watcher = QFileSystemWatcher()
-        self.file_watcher.addPath(path)
-        self.file_watcher.fileChanged.connect(self.reload)
+        self.statusBar()
+
+        open_action = QAction('&Open', self)
+        open_action.setShortcut('Ctrl+O')
+        open_action.setStatusTip('Open config file')
+        open_action.triggered.connect(self.query_open)
+
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('&File')
+        fileMenu.addAction(open_action)
 
         self.setFont(FONT)
         self.setWindowTitle('Caribou')
         self.setWindowIcon(QIcon(os.path.join(CURRENT_DIR, 'icon.png')))
 
-        routes = load_file(path)
-        self.widget = MainWidget(routes)
-        self.setCentralWidget(self.widget)
+    def query_new_path(self):
+        return QFileDialog.getOpenFileName(
+            self,
+            "Open File", os.path.expanduser("~"), "Python file (*.py)"
+        )[0]
+
+    def query_open(self):
+        path = self.query_new_path()
+
+        if path is not None:
+            self.open_file(path)
+
+    def open_file(self, path):
+        self.file_watcher = QFileSystemWatcher()
+        self.file_watcher.addPath(path)
+        self.file_watcher.fileChanged.connect(self.reload)
+
+        save_setting('file_path', path)
+        persist_storage()
+
+        self.path = path
+        self.reload(path)
 
     def reload(self, path):
-        routes = load_file(self.path)
+        assert path == self.path
+        try:
+            routes = load_file(self.path)
+        except Exception:
+            msgBox = QMessageBox()
+            msgBox.setText(traceback.format_exc())
+            msgBox.exec_()
+            print(traceback.format_exc())
+            return
+
         if self.widget:
             self.widget.setParent(None)
         self.widget = MainWidget(routes)

@@ -13,6 +13,14 @@ GLOBAL_STORAGE = {}
 TEMPORARY_STORAGE = {}
 
 
+def load_setting(name):
+    return GLOBAL_STORAGE.get('setting.%s' % name)
+
+
+def save_setting(name, value):
+    GLOBAL_STORAGE['setting.%s' % name] = value
+
+
 def save_parameter(prefix, parameter, value):
     GLOBAL_STORAGE[parameter.storage_path(prefix)] = value
 
