@@ -8,9 +8,9 @@ from pygments.token import Name, String, Number, Keyword
 from pygments.lexers import JsonLexer
 from PySide2.QtWidgets import (QLabel, QLineEdit, QPushButton, QApplication,
                                QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
-                               QTextEdit, QPlainTextEdit, QFrame, QComboBox, QScrollArea, QShortcut, QFileDialog)
-from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject, Qt, QFileSystemWatcher
-from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor, QKeySequence, QTextDocument, QTextCursor
+                               QTextEdit, QPlainTextEdit, QFrame, QComboBox, QScrollArea, QShortcut, QFileDialog, QSplitter)
+from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject, Qt, QFileSystemWatcher, QEvent
+from PySide2.QtGui import QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor, QKeySequence, QTextDocument, QTextCursor, QPalette
 from .models import Route, Choice
 from .loader import load_file
 from .storage import save_parameter, load_parameter, get_parameter_values_for_route, load_request_result, save_request_result, MissingParameter, persist_storage, load_storage
@@ -18,6 +18,7 @@ from .storage import save_parameter, load_parameter, get_parameter_values_for_ro
 CURRENT_DIR = os.path.dirname(__file__)
 
 FONT = QFont('Fira Mono')
+FONT_ROUTE = QFont('Fira Mono', 11)
 TEXT_FONT = QFont('Fira Mono')
 
 
@@ -28,7 +29,7 @@ class RouteList(QWidget):
         button = QPushButton(route.display_name)
         button.setCheckable(True)
         button.setAutoExclusive(True)
-        button.setFont(FONT)
+        button.setFont(FONT_ROUTE)
 
         def cb():
             self.new_route_signal.emit(route)
@@ -69,8 +70,6 @@ class SearchRouteList(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(self.search_line)
         layout.addWidget(self.scroll_area)
-
-        self.shortcut = QShortcut(QKeySequence("Ctrl+f"), self, self.focus)
 
         self.setLayout(layout)
 
@@ -261,7 +260,7 @@ class ParameterWidget(QWidget):
 
 
 class WorkerSignals(QObject):
-    result = Signal(str)
+    result = Signal(str, int)
 
 
 class RequestWorker(QRunnable):
@@ -284,9 +283,9 @@ class RequestWorker(QRunnable):
                 text = json.dumps(json_response, indent=2)
             except ValueError:
                 text = r.text
-            self.signals.result.emit(text)
+            self.signals.result.emit(text, r.status_code)
         except Exception:
-            self.signals.result.emit(traceback.format_exc())
+            self.signals.result.emit(traceback.format_exc(), 0)
 
 
 class TextHighlighter(QSyntaxHighlighter):
@@ -309,6 +308,23 @@ class TextHighlighter(QSyntaxHighlighter):
             current += len(value)
 
 
+class ResultTextEdit(QPlainTextEdit):
+    search = Signal()
+
+    def __init__(self):
+        super().__init__()
+
+    def focusInEvent(self, e):
+        p = self.palette()
+        p.setColor(QPalette.Highlight, QColor("#363636"))
+        self.setPalette(p)
+
+    def keyPressEvent(self, e):
+        if e.matches(QKeySequence.Find):
+            self.search.emit()
+            e.accept()
+
+
 class ResultWidget(QWidget):
     def __init__(self, route=None):
         super().__init__()
@@ -322,24 +338,35 @@ class ResultWidget(QWidget):
         self.send_button = QPushButton('Send')
         self.send_button.clicked.connect(self.make_request)
 
-        layout_send.addStretch(1)
-
         self.search_line = QLineEdit()
         self.search_line.setPlaceholderText('Search')
         self.search_line.textChanged.connect(self.search_result_reset)
         self.search_line.returnPressed.connect(self.search_result)
 
-        layout_send.addWidget(self.search_line)
+        self.response_status_label = QLabel()
+        self.response_status_label.setFont(FONT_ROUTE)
+        self.response_status_label.hide()
+
+        self.search_summary_label = QLabel()
+        self.search_summary_label.setFont(FONT_ROUTE)
+        self.search_summary_label.hide()
+
         layout_send.addWidget(self.send_button)
+        layout_send.addWidget(self.response_status_label)
+        layout_send.addStretch(1)
+
+        layout_send.addWidget(self.search_summary_label)
+        layout_send.addWidget(self.search_line)
 
         layout.addLayout(layout_send)
 
-        self.result_text_edit = QPlainTextEdit()
+        self.result_text_edit = ResultTextEdit()
         self.result_text_edit.setReadOnly(True)
         self.result_text_edit.setFont(TEXT_FONT)
         self.result_text_edit.setContextMenuPolicy(Qt.NoContextMenu)
 
-        self.shortcut = QShortcut(QKeySequence("Ctrl+Shift+f"), self, self.focus)
+        self.result_text_edit.search.connect(self.focus)
+
         self.shortcut = QShortcut(QKeySequence("Ctrl+Return"), self, self.make_request)
 
         self.result_text_edit.setUndoRedoEnabled(False)
@@ -354,17 +381,42 @@ class ResultWidget(QWidget):
 
         self.setLayout(layout)
 
-    def goto_start(self):
+    def goto(self, to):
         c = self.result_text_edit.textCursor()
-        c.movePosition(QTextCursor.Start, QTextCursor.MoveAnchor, 1)
+        c.movePosition(to, QTextCursor.MoveAnchor, 1)
         self.result_text_edit.setTextCursor(c)
 
     def search_result_reset(self):
-        self.goto_start()
+        self.goto(QTextCursor.Start)
+
+        string_format = QTextCharFormat()
+        string_format.setBackground(QColor('#668B8B'))
+
+        extras = []
+        self.search_positions = []
+        while True:
+            extra = QTextEdit.ExtraSelection()
+            found = self.result_text_edit.find(self.search_line.text())
+
+            if not found:
+                break
+
+            extra.cursor = self.result_text_edit.textCursor()
+            extra.format = string_format
+
+            self.search_positions.append(extra.cursor.position())
+            extras.append(extra)
+
+        self.result_text_edit.setExtraSelections(extras)
+        self.goto(QTextCursor.Start)
         self.search_result()
 
     def search_result(self):
-        search_settings = QTextDocument.FindCaseSensitively
+        p = self.result_text_edit.palette()
+        p.setColor(QPalette.Highlight, QColor("#ee799f"))
+        self.result_text_edit.setPalette(p)
+
+        search_settings = QTextDocument.FindFlags()
 
         mod = QApplication.keyboardModifiers()
         if (mod & Qt.ShiftModifier) != 0:
@@ -372,7 +424,24 @@ class ResultWidget(QWidget):
 
         r = self.result_text_edit.find(self.search_line.text(), search_settings)
         if not r:
-            self.goto_start()
+            if (mod & Qt.ShiftModifier) != 0:
+                self.goto(QTextCursor.End)
+            else:
+                self.goto(QTextCursor.Start)
+            self.result_text_edit.find(self.search_line.text(), search_settings)
+
+        if self.search_line.text() == '':
+            self.search_summary_label.hide()
+            return
+
+        current_position = self.result_text_edit.textCursor().position()
+        try:
+            current_index = self.search_positions.index(current_position)
+        except ValueError:
+            current_index = -1
+
+        self.search_summary_label.show()
+        self.search_summary_label.setText('%s/%s' % (current_index + 1, len(self.search_positions)))
 
     def focus(self):
         self.search_line.setFocus()
@@ -397,10 +466,25 @@ class ResultWidget(QWidget):
         except Exception:
             self.result_text_edit.setPlainText(traceback.format_exc())
 
-    def set_result(self, text):
+    def set_result(self, text, status_code):
         self.result_text_edit.setUpdatesEnabled(False)
         self.result_text_edit.setPlainText(text)
         self.result_text_edit.setUpdatesEnabled(True)
+
+        if status_code == 0:
+            self.response_status_label.hide()
+        else:
+            p = self.response_status_label.palette()
+            if status_code == 200:
+                self.response_status_label.setText(str(status_code) + ' OK')
+                p.setColor(QPalette.WindowText, QColor('#1FDA9A'))
+            else:
+                self.response_status_label.setText(str(status_code) + ' ERROR')
+                p.setColor(QPalette.WindowText, QColor('#DB3340'))
+
+            self.response_status_label.setPalette(p)
+            self.response_status_label.show()
+
         save_request_result(self.route, text)
         persist_storage()
 
@@ -422,6 +506,11 @@ class MainWidget(QWidget):
         self.layout.addWidget(self.result_widget, stretch=1)
 
         self.setLayout(self.layout)
+
+    def keyPressEvent(self, e):
+        if e.matches(QKeySequence.Find):
+            self.route_list_widget.focus()
+            e.accept()
 
     def set_route(self, route):
         self.layout.removeWidget(self.parameter_widget)
