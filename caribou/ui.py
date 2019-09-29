@@ -450,6 +450,7 @@ class ResultWidget(QWidget):
         self.search_line.selectAll()
 
     def make_request(self):
+        self.response_status_label.hide()
         self.result_text_edit.setPlainText('Loading..')
         try:
             group_values, route_values = get_parameter_values_for_route(self.route)
