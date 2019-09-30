@@ -132,7 +132,7 @@ class ChoiceParameterWidget(QComboBox):
 
     def __init__(self, parameter):
         super().__init__()
-        self.currentIndexChanged.connect(self.on_update)
+        self.activated.connect(self.on_update)
         self.parameter = parameter
         self.addItems(list(map(str, parameter.type.options)))
 
@@ -145,6 +145,7 @@ class ChoiceParameterWidget(QComboBox):
         try:
             index = self.parameter.type.options.index(value)
             self.setCurrentIndex(index)
+            self.on_update(index)
         except ValueError:
             print('"%s" is not supported for parameter %s' % (value, self.parameter))
             self.setCurrentIndex(0)
