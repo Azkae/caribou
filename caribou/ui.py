@@ -358,7 +358,9 @@ class ResultWidget(QWidget):
         self.search_summary_label.setFont(FONT_ROUTE)
         self.search_summary_label.hide()
 
-        layout_send.addWidget(self.send_button)
+        if route is not None:
+            layout_send.addWidget(self.send_button)
+
         layout_send.addWidget(self.response_status_label)
         layout_send.addStretch(1)
 
@@ -600,8 +602,8 @@ class MainWindow(QMainWindow):
             else:
                 msgBox.setText(traceback.format_exc())
             msgBox.exec_()
-            print(traceback.format_exc())
-            return
+
+            routes = []
 
         if self.widget:
             self.widget.setParent(None)

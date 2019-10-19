@@ -1,12 +1,12 @@
 from .decorators import group, param, route, request
 from .models import Route, Parameter, Group, Choice, List
 from .exceptions import CaribouException
+from packaging import version
 
 __version__ = '0.6'
 
 
 def require_version(required_version):
-    from packaging import version
     caribou_version = version.parse(__version__)
     required_version = version.parse(required_version)
 
