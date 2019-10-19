@@ -17,13 +17,14 @@ from PySide2.QtGui import (
     QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor,
     QKeySequence, QTextDocument, QTextCursor, QPalette
 )
-from .models import Route, Choice
+from .models import Route, Choice, List
 from .loader import load_file
 from .storage import (
     save_parameter, load_parameter, get_parameter_values_for_route,
     load_request_result, save_request_result, MissingParameter,
     persist_storage, load_storage, load_setting, save_setting
 )
+from .exceptions import CaribouException
 
 CURRENT_DIR = os.path.dirname(__file__)
 
@@ -222,8 +223,8 @@ class ParameterWidget(QWidget):
             )
 
             self.preview_text_edit.setPlainText(text)
-        except MissingParameter as e:
-            self.preview_text_edit.setPlainText('Missing parameter: %s' % e.parameter_name)
+        except CaribouException as e:
+            self.preview_text_edit.setPlainText(str(e))
         except Exception:
             self.preview_text_edit.setPlainText(traceback.format_exc())
 
@@ -237,7 +238,7 @@ class ParameterWidget(QWidget):
         label.setFont(FONT)
         layout.addWidget(label)
 
-        if parameter.type is None:
+        if parameter.type is None or isinstance(parameter.type, List):
             widget = TextParameterWidget(parameter)
         elif isinstance(parameter.type, Choice):
             widget = ChoiceParameterWidget(parameter)
@@ -468,8 +469,8 @@ class ResultWidget(QWidget):
             )
             worker.signals.result.connect(self.set_result)
             self.thread_pool.start(worker)
-        except MissingParameter as e:
-            self.result_text_edit.setPlainText('Missing parameter: %s' % e.parameter_name)
+        except CaribouException as e:
+            self.result_text_edit.setPlainText(str(e))
         except Exception:
             self.result_text_edit.setPlainText(traceback.format_exc())
 
@@ -592,9 +593,12 @@ class MainWindow(QMainWindow):
         assert path == self.path
         try:
             routes = load_file(self.path)
-        except Exception:
+        except Exception as e:
             msgBox = QMessageBox()
-            msgBox.setText(traceback.format_exc())
+            if isinstance(e, CaribouException):
+                msgBox.setText(str(e))
+            else:
+                msgBox.setText(traceback.format_exc())
             msgBox.exec_()
             print(traceback.format_exc())
             return

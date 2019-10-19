@@ -8,6 +8,7 @@ setup(
         'pyside2',
         'Pygments',
         'requests',
+        'packaging',
     ],
     entry_points='''
         [console_scripts]

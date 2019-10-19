@@ -1,12 +1,8 @@
 import os
 import json
+from .exceptions import MissingParameter
 
 VERSION = 1
-
-
-class MissingParameter(Exception):
-    def __init__(self, parameter_name):
-        self.parameter_name = parameter_name
 
 
 GLOBAL_STORAGE = {}
@@ -44,11 +40,13 @@ def get_parameter_values(prefix, parameters):
 
         value = GLOBAL_STORAGE.get(storage_path)
 
-        if value in (None, ''):
-            value = param.default
-
         if param.required and value in (None, ''):
             raise MissingParameter(param.name)
+
+        if value in (None, ''):
+            value = param.default
+        else:
+            value = param.process_value(value)
 
         values[param.name] = value
     return values

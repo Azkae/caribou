@@ -1,8 +1,20 @@
-from typing import NamedTuple, Callable, List
+from typing import NamedTuple, Callable, Union, List as TList
 
 
 class Choice(NamedTuple):
-    options: List[str]
+    options: TList[str]
+
+    def process_value(self, value):
+        return value
+
+
+class List(NamedTuple):
+    separator: str = ','
+
+    def process_value(self, value):
+        if value.strip() == '':
+            return []
+        return value.split(',')
 
 
 class Request(NamedTuple):
@@ -18,10 +30,15 @@ class Parameter(NamedTuple):
     default: str = None
     required: bool = True
     generator: Callable[[], str] = None
-    type: Choice = None
+    type: Union[Choice, List] = None
 
     def storage_path(self, prefix):
         return '%s.param.%s' % (prefix, self.name)
+
+    def process_value(self, value):
+        if self.type is None:
+            return value
+        return self.type.process_value(value)
 
 
 class Route:
