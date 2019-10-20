@@ -1,14 +1,12 @@
 #!/bin/bash
 
-if [ $# -ne 1 ]; then
-    echo "Missing version"
-    echo "Usage: $0 <version>"
-    exit
-fi
-
 set -e
 
-dmg_name="Caribou_v$1.dmg"
+version=$(python -c "import caribou; print(caribou.__version__)")
+
+echo "Building caribou version $version"
+
+dmg_name="Caribou_v$version.dmg"
 
 rm -rf dist/Caribou.app
 rm -rf dist/Caribou
