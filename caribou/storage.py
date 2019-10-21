@@ -40,13 +40,13 @@ def get_parameter_values(prefix, parameters):
 
         value = GLOBAL_STORAGE.get(storage_path)
 
-        if param.required and value in (None, ''):
-            raise MissingParameter(param.name)
-
         if value in (None, ''):
             value = param.default
         else:
             value = param.process_value(value)
+
+        if param.required and value in (None, ''):
+            raise MissingParameter(param.name)
 
         values[param.name] = value
     return values
