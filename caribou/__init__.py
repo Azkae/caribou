@@ -3,7 +3,7 @@ from .models import Route, Parameter, Group, Choice, List
 from .exceptions import CaribouException
 from packaging import version
 
-__version__ = '0.6'
+__version__ = '0.7'
 
 
 def require_version(required_version):
