@@ -2,8 +2,8 @@ import uuid
 import caribou
 
 BASE_URLS = {
-    "prod": "https://httpbin.org",
-    "local": "http://localhost:8080",
+    "httpbin.org": "https://httpbin.org",
+    "localhost": "http://localhost:8080",
 }
 
 
@@ -13,22 +13,18 @@ def _generate_uuid():
 
 @caribou.group('api settings')
 @caribou.param('target', type=caribou.Choice(list(BASE_URLS.keys())))
-@caribou.param('user_id', default='default-user', generator=_generate_uuid)
-def api(ctx, target, user_id):
+def api(ctx, target):
     ctx['base_url'] = BASE_URLS[target]
-    ctx['headers'] = {
-        'X-UserID': user_id,
-    }
 
 
 @api.route()
 @caribou.param('value')
-def get_httpbin(ctx, value):
+@caribou.param('random_value', generator=_generate_uuid)
+def get_httpbin(ctx, value, random_value):
     return caribou.request.post(
-        'http://httpbin.org/post',
+        ctx['base_url'] + '/post',
         json={
-            'test_value': value,
-            'test_number': 1,
-            'test_bool': True,
+            'value': value,
+            'random_value': random_value,
         }
     )
