@@ -59,12 +59,27 @@ class Route:
     def name(self):
         return self.func.__name__
 
+    KEYWORDS = ('get', 'post')
+
+    @property
+    def raw_display_name(self):
+        name_items = self.func.__name__.split('_')
+        name_items = [name.upper() if name in self.KEYWORDS else name for name in name_items]
+        return ' '.join(name_items)
+
+    def _style_word(self, name):
+        if name == 'get':
+            return '<span style="color:#25A86B">GET</span>'
+        elif name == 'post':
+            return '<span style="color:#FDA60A">POST</span>'
+        else:
+            return '<span style="color:#FFFFFF">%s</span>' % name
+
     @property
     def display_name(self):
-        name = self.func.__name__.split('_')
-        if name[0] in ('get', 'post'):
-            name[0] = name[0].upper()
-        return ' '.join(name)
+        name_items = self.func.__name__.split('_')
+        name_items = [self._style_word(name) for name in name_items]
+        return ' '.join(name_items)
 
     def __repr__(self):
         return 'Route(group={}, parameters={})'.format(

@@ -10,7 +10,7 @@ from PySide2.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QApplication,
     QVBoxLayout, QHBoxLayout, QMainWindow, QWidget,
     QTextEdit, QPlainTextEdit, QFrame, QComboBox, QScrollArea,
-    QShortcut, QFileDialog, QSplitter, QAction, QMessageBox
+    QShortcut, QFileDialog, QAction, QMessageBox
 )
 from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject, Qt, QFileSystemWatcher
 from PySide2.QtGui import (
@@ -33,11 +33,31 @@ FONT_ROUTE = QFont('Fira Mono', 11)
 TEXT_FONT = QFont('Fira Mono')
 
 
+class RouteButton(QPushButton):
+    def __init__(self, route):
+        super().__init__(route.raw_display_name)
+
+        self.setStyleSheet("color:rgba(0,0,0,0)")
+
+        self._label = QLabel(route.display_name, self)
+        self._label.setAlignment(Qt.AlignCenter | Qt.AlignBaseline)
+        self._label.setFont(FONT_ROUTE)
+        self._label.setDisabled(True)
+        self.stackUnder(self._label)
+
+    def resizeEvent(self, p):
+        super().resizeEvent(p)
+        size = self.geometry().size()
+        # XXX: magic number
+        size.setHeight(size.height() - 4)
+        self._label.resize(size)
+
+
 class RouteList(QWidget):
     new_route_signal = Signal(Route)
 
     def _create_route_widget(self, route):
-        button = QPushButton(route.display_name)
+        button = RouteButton(route)
         button.setCheckable(True)
         button.setAutoExclusive(True)
         button.setFont(FONT_ROUTE)
@@ -299,6 +319,17 @@ class TextHighlighter(QSyntaxHighlighter):
 
         number_format = QTextCharFormat()
         number_format.setForeground(QColor('#AE81FF'))
+
+        get_format = QTextCharFormat()
+        get_format.setForeground(QColor('#25A86B'))
+
+        post_format = QTextCharFormat()
+        post_format.setForeground(QColor('#FDA60A'))
+
+        if text.startswith('GET '):
+            self.setFormat(0, len('GET'), get_format)
+        if text.startswith('POST '):
+            self.setFormat(0, len('POST'), post_format)
 
         if len(text) == 0 or text[0] not in '{}[] ':
             return

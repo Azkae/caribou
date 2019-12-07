@@ -18,9 +18,20 @@ def api(ctx, target):
 
 
 @api.route()
+@caribou.param('query_param')
+def get_httpbin(ctx, query_param):
+    return caribou.request.get(
+        ctx['base_url'] + '/get',
+        params={
+            'query_param': query_param,
+        }
+    )
+
+
+@api.route()
 @caribou.param('value')
 @caribou.param('random_value', generator=_generate_uuid)
-def get_httpbin(ctx, value, random_value):
+def post_httpbin(ctx, value, random_value):
     return caribou.request.post(
         ctx['base_url'] + '/post',
         json={
