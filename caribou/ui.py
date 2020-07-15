@@ -206,11 +206,8 @@ class ParameterWidget(QWidget):
                 layout.addLayout(param_layout)
 
         self.highlighter = TextHighlighter(self.preview_text_edit.document())
-
         self._update_preview()
-
         layout.addWidget(self.preview_text_edit)
-
         self.setLayout(layout)
 
     def _update_preview(self):

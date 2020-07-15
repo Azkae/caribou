@@ -8,6 +8,15 @@ class RequestApi():
     def post(self, *args, **kwargs):
         return Request(method='POST', *args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        return Request(method='DELETE', *args, **kwargs)
+
+    def patch(self, *args, **kwargs):
+        return Request(method='PATCH', *args, **kwargs)
+
+    def put(self, *args, **kwargs):
+        return Request(method='PUT', *args, **kwargs)
+
 
 request = RequestApi()
 
