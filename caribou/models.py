@@ -31,9 +31,13 @@ class Parameter(NamedTuple):
     required: bool = True
     generator: Callable[[], str] = None
     type: Union[Choice, List] = None
+    id: str = None
 
     def storage_path(self, prefix):
-        return '%s.param.%s' % (prefix, self.name)
+        if self.id is not None:
+            return 'globals.param.%s' % self.id
+        else:
+            return '%s.param.%s' % (prefix, self.name)
 
     def process_value(self, value):
         if self.type is None:
