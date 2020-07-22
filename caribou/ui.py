@@ -1,4 +1,5 @@
 import sys
+import time
 import os
 import requests
 import json
@@ -281,7 +282,7 @@ class ParameterWidget(QWidget):
 
 
 class WorkerSignals(QObject):
-    result = Signal(str, int)
+    result = Signal(str, int, float)
 
 
 class RequestWorker(QRunnable):
@@ -294,19 +295,22 @@ class RequestWorker(QRunnable):
     @Slot()
     def run(self):
         try:
+            start = time.time()
             r = requests.request(
                 *self.args,
                 **self.kwargs
             )
+            end = time.time()
+            elapsed = end - start
 
             try:
                 json_response = r.json()
                 text = json.dumps(json_response, indent=2)
             except ValueError:
                 text = r.text
-            self.signals.result.emit(text, r.status_code)
+            self.signals.result.emit(text, r.status_code, elapsed)
         except Exception:
-            self.signals.result.emit(traceback.format_exc(), 0)
+            self.signals.result.emit(traceback.format_exc(), 0, -1)
 
 
 class TextHighlighter(QSyntaxHighlighter):
@@ -382,6 +386,10 @@ class ResultWidget(QWidget):
         self.response_status_label.setFont(FONT_ROUTE)
         self.response_status_label.hide()
 
+        self.elapsed_time_label = QLabel()
+        self.elapsed_time_label.setFont(FONT_ROUTE)
+        self.elapsed_time_label.hide()
+
         self.search_summary_label = QLabel()
         self.search_summary_label.setFont(FONT_ROUTE)
         self.search_summary_label.hide()
@@ -390,6 +398,7 @@ class ResultWidget(QWidget):
             layout_send.addWidget(self.send_button)
 
         layout_send.addWidget(self.response_status_label)
+        layout_send.addWidget(self.elapsed_time_label)
         layout_send.addStretch(1)
 
         layout_send.addWidget(self.search_summary_label)
@@ -486,6 +495,7 @@ class ResultWidget(QWidget):
 
     def make_request(self):
         self.response_status_label.hide()
+        self.elapsed_time_label.hide()
         self.result_text_edit.setPlainText('Loading..')
         try:
             group_values, route_values = get_parameter_values_for_route(self.route)
@@ -504,13 +514,10 @@ class ResultWidget(QWidget):
         except Exception:
             self.result_text_edit.setPlainText(traceback.format_exc())
 
-    def set_result(self, text, status_code):
-        self.result_text_edit.setUpdatesEnabled(False)
-        self.result_text_edit.setPlainText(text)
-        self.result_text_edit.setUpdatesEnabled(True)
-
+    def set_result(self, text, status_code, elapsed_time):
         if status_code == 0:
             self.response_status_label.hide()
+            self.elapsed_time_label.hide()
         else:
             p = self.response_status_label.palette()
             if status_code == 200:
@@ -522,6 +529,13 @@ class ResultWidget(QWidget):
 
             self.response_status_label.setPalette(p)
             self.response_status_label.show()
+
+            self.elapsed_time_label.setText('%s ms' % int(elapsed_time * 1000))
+            self.elapsed_time_label.show()
+
+        self.result_text_edit.setUpdatesEnabled(False)
+        self.result_text_edit.setPlainText(text)
+        self.result_text_edit.setUpdatesEnabled(True)
 
         save_request_result(self.route, text)
         persist_storage()
