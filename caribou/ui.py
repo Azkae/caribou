@@ -602,9 +602,22 @@ class MainWindow(QMainWindow):
         open_action.setStatusTip('Open config file')
         open_action.triggered.connect(self.query_open)
 
+        reload_action = QAction('&Reload', self)
+        reload_action.setShortcut('Ctrl+R')
+        reload_action.setStatusTip('Reload config file')
+        reload_action.triggered.connect(self.query_reload)
+
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         fileMenu.addAction(open_action)
+        fileMenu.addAction(reload_action)
+
+        # copy_curl_action = QAction('Copy curl command', self)
+        # copy_curl_action.setStatusTip('Copy curl command')
+        # copy_curl_action.triggered.connect(self.copy_curl_command)
+
+        # routeMenu = menubar.addMenu('&Route')
+        # routeMenu.addAction(copy_curl_action)
 
         self.setFont(FONT)
         self.setWindowTitle('Caribou')
@@ -632,6 +645,12 @@ class MainWindow(QMainWindow):
 
         self.path = path
         self.reload(path)
+
+    # def copy_curl_command(self):
+    #     pass
+
+    def query_reload(self):
+        return self.reload(self.path)
 
     def reload(self, path):
         assert path == self.path
