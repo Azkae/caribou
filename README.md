@@ -18,3 +18,23 @@ Todos:
 - add the ability to edit the raw preview
 - add color for get & post in readme
 - add a list type? (which widget?)
+
+## Mac setup
+
+Pyenv install:
+
+```
+MACOSX_DEPLOYMENT_TARGET=10.13 PYTHON_CONFIGURE_OPTS=--enable-shared pyenv install 3.9.0
+```
+
+
+Install:
+```
+./install-pyinstaller-mac.sh
+pip install -e .
+```
+
+Build:
+```
+./build-mac.sh
+```

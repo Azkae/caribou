@@ -17,6 +17,11 @@ class List(NamedTuple):
         return value.split(',')
 
 
+class TextField(NamedTuple):
+    def process_value(self, value):
+        return value
+
+
 class Request(NamedTuple):
     url: str
     method: str

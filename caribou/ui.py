@@ -16,9 +16,9 @@ from PySide2.QtWidgets import (
 from PySide2.QtCore import Signal, QThreadPool, QRunnable, Slot, QObject, Qt, QFileSystemWatcher
 from PySide2.QtGui import (
     QIcon, QFont, QTextCharFormat, QSyntaxHighlighter, QColor,
-    QKeySequence, QTextDocument, QTextCursor, QPalette
+    QKeySequence, QTextDocument, QTextCursor, QPalette, QFontMetrics
 )
-from .models import Route, Choice, List
+from .models import Route, Choice, List, TextField
 from .loader import load_file
 from .storage import (
     save_parameter, load_parameter, get_parameter_values_for_route,
@@ -149,6 +149,47 @@ class TextParameterWidget(QLineEdit):
             self.setText(value)
 
 
+class TextFieldParameterWidget(QTextEdit):
+    updated_signal = Signal(object)
+
+    def __init__(self, parameter):
+        super().__init__()
+        metrics = QFontMetrics(TEXT_FONT)
+        self.min_height = metrics.height()
+        self.setFont(TEXT_FONT)
+
+        self.default_text = parameter.default
+        self.textChanged.connect(self.on_update)
+
+        self.highlighter = JSONHighlighter(self.document())
+        self.setText(parameter.default)
+
+    def update_size(self):
+        size = self.document().size().toSize()
+        self.setFixedHeight(max(self.min_height, size.height()) + 3)
+
+    def on_update(self):
+        self.update_size()
+        self.updated_signal.emit(self.toPlainText().strip())
+
+    def set_value(self, value):
+        if value is None:
+            self.setText(self.default_text)
+        else:
+            self.setText(value)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.update_size()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Tab:
+            tc = self.textCursor()
+            tc.insertText("  ")
+            return
+        return QTextEdit.keyPressEvent(self, event)
+
+
 class ChoiceParameterWidget(QComboBox):
     updated_signal = Signal(object)
 
@@ -209,6 +250,7 @@ class ParameterWidget(QWidget):
         self.highlighter = TextHighlighter(self.preview_text_edit.document())
         self._update_preview()
         layout.addWidget(self.preview_text_edit)
+
         self.setLayout(layout)
 
     def _update_preview(self):
@@ -258,6 +300,8 @@ class ParameterWidget(QWidget):
 
         if parameter.type is None or isinstance(parameter.type, List):
             widget = TextParameterWidget(parameter)
+        elif isinstance(parameter.type, TextField):
+            widget = TextFieldParameterWidget(parameter)
         elif isinstance(parameter.type, Choice):
             widget = ChoiceParameterWidget(parameter)
         else:
@@ -333,6 +377,25 @@ class TextHighlighter(QSyntaxHighlighter):
             self.setFormat(0, len('POST'), post_format)
 
         if len(text) == 0 or text[0] not in '{}[] ':
+            return
+
+        current = 0
+        for tokentype, value in JsonLexer().get_tokens(text):
+            if tokentype in Name or tokentype in String:
+                self.setFormat(current, len(value), string_format)
+            elif tokentype in Number or tokentype in Keyword:
+                self.setFormat(current, len(value), number_format)
+            current += len(value)
+
+
+class JSONHighlighter(QSyntaxHighlighter):
+    def highlightBlock(self, text):
+        string_format = QTextCharFormat()
+        string_format.setForeground(QColor('#E6DB74'))
+
+        number_format = QTextCharFormat()
+        number_format.setForeground(QColor('#AE81FF'))
+        if len(text) == 0:
             return
 
         current = 0

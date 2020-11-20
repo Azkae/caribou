@@ -1,9 +1,9 @@
 from .decorators import group, param, route, request
-from .models import Route, Parameter, Group, Choice, List
+from .models import Route, Parameter, Group, Choice, List, TextField
 from .exceptions import CaribouException
 from packaging import version
 
-__version__ = '0.12'
+__version__ = '0.13'
 
 
 def require_version(required_version):

@@ -1,20 +1,21 @@
 import os
 import json
+from pathlib import Path
 from .exceptions import MissingParameter
 
 VERSION = 1
-
+DATA_PATH = Path(os.path.expanduser('~/.caribou/data'))
 
 GLOBAL_STORAGE = {}
 TEMPORARY_STORAGE = {}
 
 
 def load_setting(name):
-    return GLOBAL_STORAGE.get('setting.%s' % name)
+    return GLOBAL_STORAGE.get('settings.%s' % name)
 
 
 def save_setting(name, value):
-    GLOBAL_STORAGE['setting.%s' % name] = value
+    GLOBAL_STORAGE['settings.%s' % name] = value
 
 
 def save_parameter(prefix, parameter, value):
@@ -71,8 +72,8 @@ def get_parameter_values_for_route(route):
 # XXX: cleanup
 def load_storage():
     global GLOBAL_STORAGE
-    if os.path.exists('/tmp/caribou'):
-        with open('/tmp/caribou') as f:
+    if DATA_PATH.exists():
+        with DATA_PATH.open() as f:
             data = json.load(f)
             if data['version'] != VERSION:
                 return
@@ -80,7 +81,8 @@ def load_storage():
 
 
 def persist_storage():
-    with open('/tmp/caribou', 'w') as f:
+    DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with DATA_PATH.open('w') as f:
         json.dump({
             'version': VERSION,
             'data': GLOBAL_STORAGE
