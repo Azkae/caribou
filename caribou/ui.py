@@ -436,9 +436,8 @@ class ResultTextEdit(QPlainTextEdit):
         if e.matches(QKeySequence.Find):
             self.search.emit()
             e.accept()
-        if e.matches(QKeySequence.Copy):
-            self.copy()
-            e.accept()
+            return
+        super().keyPressEvent(e)
 
 
 class ResultWidget(QWidget):
