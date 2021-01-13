@@ -73,11 +73,13 @@ class RouteList(QWidget):
         super().__init__()
 
         self.buttons = []
+        self.route_per_button = {}
 
         layout = QVBoxLayout()
         for route in routes:
             button = self._create_route_widget(route)
             self.buttons.append(button)
+            self.route_per_button[route] = button
             layout.addWidget(button)
 
         layout.addStretch(1)
@@ -117,6 +119,18 @@ class SearchRouteList(QWidget):
             if button.isVisible():
                 button.animateClick()
                 return
+
+    def select_route_with_name(self, name):
+        for route, button in self.route_list.route_per_button.items():
+            if route.name == name:
+                button.animateClick()
+                return
+
+    def set_search(self, text):
+        self.search_line.setText(text)
+
+    def current_search(self):
+        return self.search_line.text()
 
     def focus(self):
         self.search_line.setFocus()
@@ -614,6 +628,8 @@ class MainWidget(QWidget):
         self.parameter_widget = ParameterWidget()
         self.result_widget = ResultWidget()
 
+        self.selected_route = None
+
         self.route_list_widget.route_list.new_route_signal.connect(self.set_route)
 
         self.layout.addWidget(self.route_list_widget)
@@ -628,6 +644,8 @@ class MainWidget(QWidget):
             e.accept()
 
     def set_route(self, route):
+        self.selected_route = route
+
         self.layout.removeWidget(self.parameter_widget)
         self.parameter_widget.setParent(None)
 
@@ -638,6 +656,15 @@ class MainWidget(QWidget):
         self.result_widget = ResultWidget(route)
         self.layout.addWidget(self.parameter_widget, stretch=1)
         self.layout.addWidget(self.result_widget, stretch=1)
+
+    def set_route_with_name(self, name):
+        self.route_list_widget.select_route_with_name(name)
+
+    def set_search(self, text):
+        self.route_list_widget.set_search(text)
+
+    def current_search(self):
+        return self.route_list_widget.current_search()
 
 
 class MainWindow(QMainWindow):
@@ -716,6 +743,9 @@ class MainWindow(QMainWindow):
         return self.reload(self.path)
 
     def reload(self, path):
+        current_route = self.widget.selected_route if self.widget is not None else None
+        current_search = self.widget.current_search() if self.widget is not None else None
+
         assert path == self.path
         try:
             routes = load_file(self.path)
@@ -733,6 +763,11 @@ class MainWindow(QMainWindow):
             self.widget.setParent(None)
         self.widget = MainWidget(routes)
         self.setCentralWidget(self.widget)
+
+        if current_route is not None:
+            self.widget.set_route_with_name(current_route.name)
+        if current_search is not None:
+            self.widget.set_search(current_search)
 
 
 def run(path=None):
