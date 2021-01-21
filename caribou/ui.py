@@ -96,7 +96,7 @@ class SearchRouteList(QWidget):
         self.scroll_area.setWidget(self.route_list)
         self.scroll_area.setWidgetResizable(False)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         self.search_line = QLineEdit()
         self.search_line.setPlaceholderText('Search')
