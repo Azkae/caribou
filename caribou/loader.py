@@ -32,7 +32,7 @@ def register_route(route):
 
 def load_file(file_path):
     if not os.path.exists(file_path):
-        raise Exception('File not found: %s' % file_path)
+        raise Exception("File not found: %s" % file_path)
 
     spec = importlib.util.spec_from_file_location("routes", file_path)
     route_modules = importlib.util.module_from_spec(spec)

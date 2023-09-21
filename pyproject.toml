@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "caribou"
+version = "0.1.0"
+description = ""
+authors = ["Romain Ouabdelkader <romain.ouabdelkader@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.9.*"
+PySide2 = "^5.15.2.1"
+Pygments = "^2.16.1"
+requests = "^2.31.0"
+packaging = "^23.1"
+
+
+[tool.poetry.group.dev.dependencies]
+pyinstaller = "^5.13.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+caribou = "caribou.cli:main"

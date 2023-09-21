@@ -11,7 +11,7 @@ dmg_name="Caribou_v$version.dmg"
 rm -rf dist/Caribou.app
 rm -rf dist/Caribou
 
-pyinstaller --clean --windowed Caribou.spec
+pyinstaller --clean Caribou.spec
 
 mkdir -p dist/dmg
 ln -fs /Applications dist/dmg
