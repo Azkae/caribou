@@ -1,48 +1,54 @@
-from typing import NamedTuple, Callable, Union, List as TList
+from typing import NamedTuple, Callable, Union, Optional
+from dataclasses import dataclass
 
 
-class Choice(NamedTuple):
-    options: TList[str]
+@dataclass
+class Choice:
+    options: list[str]
 
     def process_value(self, value):
         return value
 
 
-class List(NamedTuple):
-    separator: str = ','
+@dataclass
+class List:
+    separator: str = ","
 
     def process_value(self, value):
-        if value.strip() == '':
+        if value.strip() == "":
             return []
-        return value.split(',')
+        return value.split(",")
 
 
-class TextField(NamedTuple):
+@dataclass
+class TextField:
     def process_value(self, value):
         return value
 
 
-class Request(NamedTuple):
+@dataclass
+class Request:
     url: str
     method: str
-    params: dict = None
-    headers: dict = None
-    json: dict = None
+    params: Optional[dict] = None
+    headers: Optional[dict] = None
+    json: Optional[dict] = None
 
 
-class Parameter(NamedTuple):
+@dataclass
+class Parameter:
     name: str
-    default: str = None
+    default: Optional[str] = None
     required: bool = True
-    generator: Callable[[], str] = None
-    type: Union[Choice, List] = None
-    id: str = None
+    generator: Optional[Callable[[], str]] = None
+    type: Union[Choice, List, None] = None
+    id: Optional[str] = None
 
     def storage_path(self, prefix):
         if self.id is not None:
-            return 'globals.param.%s' % self.id
+            return "globals.param.%s" % self.id
         else:
-            return '%s.param.%s' % (prefix, self.name)
+            return "%s.param.%s" % (prefix, self.name)
 
     def process_value(self, value):
         if self.type is None:
@@ -53,47 +59,48 @@ class Parameter(NamedTuple):
 class Route:
     def __init__(self, func, group=None):
         from .loader import register_route
+
         self.group = group
         self.func = func
-        parameters = getattr(func, '__caribou_params__', [])
+        parameters = getattr(func, "__caribou_params__", [])
         self.parameters = list(reversed(parameters))
 
         register_route(self)
 
     @property
     def storage_prefix(self):
-        return 'routes.%s' % self.func.__name__
+        return "routes.%s" % self.func.__name__
 
     @property
     def name(self):
         return self.func.__name__
 
-    KEYWORDS = ('get', 'post')
+    KEYWORDS = ("get", "post")
 
     @property
     def raw_display_name(self):
-        name_items = self.func.__name__.split('_')
-        name_items = [name.upper() if name in self.KEYWORDS else name for name in name_items]
-        return ' '.join(name_items)
+        name_items = self.func.__name__.split("_")
+        name_items = [
+            name.upper() if name in self.KEYWORDS else name for name in name_items
+        ]
+        return " ".join(name_items)
 
     def _style_word(self, name):
-        if name == 'get':
+        if name == "get":
             return '<span style="color:#25A86B">GET</span>'
-        elif name == 'post':
+        elif name == "post":
             return '<span style="color:#FDA60A">POST</span>'
         else:
             return '<span style="color:#FFFFFF">%s</span>' % name
 
     @property
     def display_name(self):
-        name_items = self.func.__name__.split('_')
+        name_items = self.func.__name__.split("_")
         name_items = [self._style_word(name) for name in name_items]
-        return ' '.join(name_items)
+        return " ".join(name_items)
 
     def __repr__(self):
-        return 'Route(group={}, parameters={})'.format(
-            self.group, self.parameters
-        )
+        return "Route(group={}, parameters={})".format(self.group, self.parameters)
 
     def get_request(self, group_values, route_values):
         ctx = {}
@@ -109,21 +116,20 @@ class Group:
     def __init__(self, func, name):
         self.func = func
         self.name = name
-        parameters = getattr(func, '__caribou_params__', [])
+        parameters = getattr(func, "__caribou_params__", [])
         self.parameters = list(reversed(parameters))
 
     @property
     def storage_prefix(self):
-        return 'groups.%s' % self.func.__name__
+        return "groups.%s" % self.func.__name__
 
     def __repr__(self):
-        return 'Group(parameters={})'.format(
-            self.parameters
-        )
+        return "Group(parameters={})".format(self.parameters)
 
     def route(self):
         def decorator(func):
             return Route(func, group=self)
+
         return decorator
 
     def __call__(self, *args, **kwargs):
