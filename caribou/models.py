@@ -1,4 +1,4 @@
-from typing import NamedTuple, Callable, Union, Optional
+from typing import Callable, Union, Optional
 from dataclasses import dataclass
 
 
@@ -134,3 +134,13 @@ class Group:
 
     def __call__(self, *args, **kwargs):
         return self.func(*args, **kwargs)
+
+
+class Generator:
+    def __init__(self, func) -> None:
+        self.func = func
+
+
+class Shared:
+    def __init__(self, id: str) -> None:
+        self.id = id

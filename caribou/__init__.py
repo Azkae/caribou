@@ -1,9 +1,9 @@
-from .decorators import group, param, route, request
+from .decorators import group, route, request
 from .models import Route, Parameter, Group, Choice, List, TextField
 from .exceptions import CaribouException
 from packaging import version
 
-__version__ = '0.15'
+__version__ = "0.15"
 
 
 def require_version(required_version):
@@ -12,5 +12,7 @@ def require_version(required_version):
 
     if caribou_version < required_version:
         raise CaribouException(
-            'Outdated Caribou version.\n\nUpdate here: https://github.com/Azkae/caribou/releases'.format(version=required_version)
+            "Outdated Caribou version.\n\nUpdate here: https://github.com/Azkae/caribou/releases".format(
+                version=required_version
+            )
         )

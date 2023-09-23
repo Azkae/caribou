@@ -6,15 +6,17 @@ authors = ["Romain Ouabdelkader <romain.ouabdelkader@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "3.9.*"
+python = "3.10.*"
 PySide2 = "^5.15.2.1"
 Pygments = "^2.16.1"
 requests = "^2.31.0"
 packaging = "^23.1"
+typing-inspect = "^0.9.0"
 
 
 [tool.poetry.group.dev.dependencies]
 pyinstaller = "^5.13.2"
+pytest = "^7.4.2"
 
 [build-system]
 requires = ["poetry-core"]
